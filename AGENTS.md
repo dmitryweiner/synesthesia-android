@@ -35,8 +35,9 @@ scripts/check.sh               # after every change
 - **Measure first**: performance claims come with a number from a bench,
   written into PLAN.md with a date.
 - There is no emulator in the cloud sessions (no KVM): what runs there is
-  the JVM tests, lint and the APK build. Say so when a change could only be
-  checked on a device.
+  the JVM tests, lint and the APK build. The instrumented tests
+  (`src/androidTest`) run on an emulator in CI (`emulator` job, API 26 and
+  35). Say so when a change could only be checked on a device.
 
 ## Module map
 

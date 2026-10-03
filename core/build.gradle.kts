@@ -30,6 +30,7 @@ android {
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
         consumerProguardFiles("consumer-rules.pro")
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
@@ -173,4 +174,9 @@ dependencies {
     implementation(variantOf(libs.jna) { artifactType("aar") })
     testImplementation(libs.jna)
     testImplementation(libs.junit)
+    // On a device or emulator: the same calls through JNA's Android natives
+    // and libsyn_android.so for the device's ABI (CI, emulator job).
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
 }

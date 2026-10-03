@@ -214,10 +214,12 @@ copied into this repository.
    UniFFI generates the Kotlin, `scripts/check.sh`. Proof: a JVM test lists
    the 12 presets through the generated bindings against a host build of
    the library, and the app does the same on an emulator.
-   **Done 2026-10-03**, with one gap: the cloud machine has no KVM, so no
-   emulator ran — the APK was built (debug, and release through R8) and
-   holds `libsyn_android.so` for both ABIs, but nothing has started it on
-   Android yet. The first run on a device is the first step of phase 1.
+   **Done 2026-10-03.** The cloud machine has no KVM, so the emulator runs
+   in CI instead (the `emulator` job, API 26 and 35): an instrumented test
+   loads the core through JNA on Android and lists the presets, and the app
+   starts and shows them. Locally: the APK is built (debug, and release
+   through R8) and holds `libsyn_android.so` for both ABIs. A real phone
+   has not run it yet — that is the first step of phase 1.
    Found on the way, fixed in the core: `AppState` wrote the point's name as
    `preset_name`, the web app's key is `presetName` (old spelling still
    read; its removal is in synesthesia-core's TODO.md). Versions: AGP 9.4.1

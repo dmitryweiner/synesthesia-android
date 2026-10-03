@@ -1,8 +1,8 @@
 # Synesthesia for Android — plan & decisions
 
-*Status: the plan was agreed with the user on 2026-10-03. Phase 0 is done
-(2026-10-03). Phase 1 is built and tested on emulators; its measurements on
-a phone are pending.*
+*Status: the plan was agreed with the user on 2026-10-03. Phases 0 and 1
+are done (2026-10-03; phase 1's numbers from a phone are still to be taken).
+Phase 2 is next.*
 
 The third home of [synesthesia](https://github.com/dmitryweiner/synesthesia):
 one point in a ~500-gene space makes sound (21 formula generators, an FX
@@ -283,11 +283,15 @@ copied into this repository.
      `AudioOutput` run whose clock follows the track, a second run on the
      same player once the first has let go of it, the service coming to the
      front and leaving it, stop-and-play at once.
-   **To measure on a phone** (then decision 5 is settled and written here):
-   the Bench report; `core %` and underruns after 30 min with the screen off;
-   and by hand — the lock screen and headphone controls, a call pausing and
-   resuming the sound, unplugging headphones, switching presets while
-   playing without a click.
+   **On a real phone (2026-10-03, by the user):** the sound plays well, with
+   no stutter, and keeps playing in the background.
+   **Decision 5, for now: `AudioTrack` stays.** Nothing in the listening
+   asks for AAudio. Still to be measured, so the choice rests on numbers
+   (decision 12) and is re-checked once phase 2 adds the scout's renders:
+   the Bench report; `core %` and underruns after 30 min with the screen
+   off; and by hand — the lock screen and headphone controls, a call
+   pausing and resuming the sound, unplugging headphones, switching presets
+   while playing without a click.
 2. **Session.** `syn-session` ported from `main.ts` / `main.rs` with host
    tests; the main screen: 👎 👍 🎲 ↩, status, point name, morph audible;
    👍/👎 from the notification.

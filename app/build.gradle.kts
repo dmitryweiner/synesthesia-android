@@ -23,6 +23,18 @@ android {
         }
     }
 
+    // One debug key for every machine — each cloud session, CI, a laptop —
+    // so a debug APK built anywhere installs over the previous one. It is
+    // Android's standard debug key (password "android"), not a secret.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

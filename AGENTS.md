@@ -34,6 +34,9 @@ scripts/check.sh               # after every change
   path; a UI that falls behind loses frames, never sound.
 - **Measure first**: performance claims come with a number from a bench,
   written into PLAN.md with a date.
+- **No build outputs in git.** The debug APK for the user is the CI
+  artifact `app-debug`. Debug builds are signed with `app/debug.keystore`
+  so APKs from any run install over each other; never replace that key.
 - There is no emulator in the cloud sessions (no KVM): what runs there is
   the JVM tests, lint and the APK build. The instrumented tests
   (`src/androidTest`) run on an emulator in CI (`emulator` job, API 26 and

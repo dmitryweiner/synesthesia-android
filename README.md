@@ -17,6 +17,14 @@ storage, the background service and the interface, in Kotlin.
 Kotlin through generated bindings; the app lists the built-in points. Sound
 is phase 1.
 
+## Trying it on a phone
+
+Every CI run on GitHub (Actions → *check* → the run) has the debug build as
+the artifact **app-debug**: arm64 phones and the x86_64 emulator, Android
+8.0+. Unzip it, open the APK on the phone and allow installing from that
+source. Every debug build is signed with the same key
+(`app/debug.keystore`), so a newer one installs over the older one.
+
 ## Building
 
 Needs a JDK 17+ (21 is what CI uses), Rust (stable), and the Android SDK:

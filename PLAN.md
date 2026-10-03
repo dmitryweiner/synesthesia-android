@@ -27,8 +27,8 @@ in Russian — the same rule as the sibling projects.
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`f6b47cc`); this repository, branch `claude/vigilant-franklin-bs8pus` —
-`main` has phase 0 only. Update this table when a phase lands.
+`f6b47cc`); this repository, `main` (phases 0 and 1 merged on
+2026-10-03). Update this table when a phase lands.
 
 ## What the two existing ports teach
 

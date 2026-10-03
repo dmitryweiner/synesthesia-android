@@ -1,8 +1,6 @@
 # Synesthesia for Android — plan & decisions
 
-*Status: the plan was agreed with the user on 2026-10-03. Phases 0 and 1
-are done (2026-10-03; phase 1's numbers from a phone are still to be taken).
-Phase 2 is next.*
+*Status: the plan was agreed with the user on 2026-10-03.*
 
 The third home of [synesthesia](https://github.com/dmitryweiner/synesthesia):
 one point in a ~500-gene space makes sound (21 formula generators, an FX
@@ -14,6 +12,23 @@ next one (Swift) is a shell, not a fourth port.
 
 Docs, UI strings and code comments are in English; the user talks to agents
 in Russian — the same rule as the sibling projects.
+
+## Where the implementation is
+
+| phase | | state |
+|---|---|---|
+| 0 | Scaffold: core repo, Gradle + cargo-ndk + UniFFI | ✅ done 2026-10-03, runs on a phone |
+| 1 | Sound, in the background | ✅ done 2026-10-03, plays on a phone with the screen off; numbers still to take (see phase 1) |
+| 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ⏭ **next** |
+| 3 | Picture (GLES 3.0) | — |
+| 4 | Points and tokens | — |
+| 5 | Settings | — |
+| 6 | Polish | — |
+| 7 | iOS readiness (optional) | — |
+
+Where the code is: synesthesia-core `main` (the app pins it at
+`f6b47cc`); this repository, branch `claude/vigilant-franklin-bs8pus` —
+`main` has phase 0 only. Update this table when a phase lands.
 
 ## What the two existing ports teach
 
@@ -229,7 +244,7 @@ copied into this repository.
 
 ## Phases
 
-0. **Scaffold.** `synesthesia-core` populated (syn-core + assets + golden
+0. ✅ **Scaffold.** `synesthesia-core` populated (syn-core + assets + golden
    moved, `check.sh` green there); `syn-ffi` with a first surface (presets,
    schema); here: Gradle project (AGP, Kotlin, Compose), `core/syn-android`,
    `cargo-ndk` builds the `.so` for arm64-v8a and x86_64 into `jniLibs`,
@@ -249,7 +264,7 @@ copied into this repository.
    steps are in synesthesia-core's TODO.md. Versions: AGP 9.4.1
    with its built-in Kotlin 2.4.20, Gradle 9.8.0, Compose BOM 2026.09.00,
    UniFFI 0.32.2, JNA 5.19.1, NDK 27.2.
-1. **Sound, in the background.** The foreground service with the
+1. ✅ **Sound, in the background.** The foreground service with the
    `AudioTrack` thread pulling blocks from the core; play a preset with the
    screen off; the notification; audio focus; feature frames to a meter on
    screen; bench: underruns and CPU per preset on a device (decision 5 is
@@ -292,7 +307,7 @@ copied into this repository.
    off; and by hand — the lock screen and headphone controls, a call
    pausing and resuming the sound, unplugging headphones, switching presets
    while playing without a click.
-2. **Session.** `syn-session` ported from `main.ts` / `main.rs` with host
+2. ⏭ **Session (next).** `syn-session` ported from `main.ts` / `main.rs` with host
    tests; the main screen: 👎 👍 🎲 ↩, status, point name, morph audible;
    👍/👎 from the notification.
 3. **Picture.** GLES 3.0 renderer with the verbatim shaders, frame params

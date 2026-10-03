@@ -1,0 +1,15 @@
+[package]
+name = "syn-android"
+description = "The native library the Android app loads: the shared core's FFI, linked into one .so."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+# libsyn_android.so — the name the generated Kotlin loads.
+name = "syn_android"
+crate-type = ["cdylib"]
+
+[dependencies]
+syn-ffi = { workspace = true }

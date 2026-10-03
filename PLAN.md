@@ -1,7 +1,7 @@
 # Synesthesia for Android — plan & decisions
 
-*Status: decisions 1, 2, 8, 10 agreed with the user on 2026-10-03; the plan
-is under a second reading before phase 0 starts.*
+*Status: the plan was agreed with the user on 2026-10-03. Phase 0 is done
+(2026-10-03); phase 1 is next.*
 
 The third home of [synesthesia](https://github.com/dmitryweiner/synesthesia):
 one point in a ~500-gene space makes sound (21 formula generators, an FX
@@ -139,7 +139,10 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
     is requested (pause on a call, resume after) and headphone media keys
     map to ▶/⏹. This is part of phase 1, not polish.
 11. **minSdk 26 (Android 8.0), OpenGL ES 3.0 required, arm64-v8a first**
-    (plus x86_64 for the emulator; armeabi-v7a only if asked).
+    (plus x86_64 for the emulator; armeabi-v7a only if asked). The APK
+    carries exactly these two ABIs (`abiFilters`), so a device the core is
+    not built for cannot install it. compileSdk and targetSdk are 37: the
+    Compose libraries of BOM 2026.09 refuse to build against less.
 12. **Measure first** — carried over verbatim. Every performance claim comes
     from a checked-in bench: render speed per preset on the device,
     underruns, GL frame time per rung, scout wall time and energy. CI runs
@@ -174,25 +177,33 @@ syn-ffi/              the UniFFI surface (decision 2)
 scripts/check.sh      fmt + clippy + tests; dump-*.mjs against ../synesthesia
 ```
 
-Repository layout — this one:
+Repository layout — this one (phase 0 as built; later phases add the
+`app/` packages listed):
 
 ```
-core/
-  Cargo.toml          one crate, syn-android: cdylib over syn-ffi (git dep)
-app/                  the Android application (Gradle, Kotlin, Compose)
-  src/main/.../audio  AudioTrack sink thread, feature frames
-  src/main/.../gl     EGL, ping-pong targets, the seven passes
+core/                 Android library module: the Rust core + its Kotlin
+  build.gradle.kts    cargoBuildAndroid (cargo-ndk → jniLibs), cargoBuildHost
+                      (for the JVM tests), uniffiBindings (→ Kotlin)
+  rust/Cargo.toml     cargo workspace; pins synesthesia-core by `rev`
+  rust/syn-android/   the cdylib the app loads (libsyn_android.so)
+  rust/uniffi-bindgen/ the generator, calling syn-ffi's own, so the
+                      bindings always match the scaffolding
+  src/test/           JVM tests calling the real core through the bindings
+app/                  the application (Kotlin, Compose)
+  src/main/.../audio  AudioTrack sink thread, feature frames      (phase 1)
+  src/main/.../gl     EGL, ping-pong targets, the seven passes    (phase 3)
   src/main/.../ui     Compose screens
-  src/main/.../store  last point, points, settings, links
+  src/main/.../store  last point, points, settings, tokens        (phase 4)
   src/main/assets/shaders/   copied verbatim from the web app by a script
 scripts/
-  check.sh            cargo fmt/clippy/test + gradle lint/test
-  sync-shaders.sh     re-copies the shaders from ../synesthesia
+  check.sh            rustfmt + clippy on core/rust; JVM tests, lint, APK
+  setup-android-sdk.sh  SDK, NDK, Rust targets, cargo-ndk, local.properties
+  sync-shaders.sh     re-copies the shaders from ../synesthesia   (phase 3)
 ```
 
-`core/syn-android` is a thin `cdylib` crate whose only dependency is
-`syn-ffi` from `synesthesia-core`, pinned to a revision. Nothing from the
-core is copied into this repository.
+`syn-android` is a thin `cdylib` crate whose only dependency is `syn-ffi`
+from `synesthesia-core`, pinned to a revision. Nothing from the core is
+copied into this repository.
 
 ## Phases
 
@@ -203,6 +214,15 @@ core is copied into this repository.
    UniFFI generates the Kotlin, `scripts/check.sh`. Proof: a JVM test lists
    the 12 presets through the generated bindings against a host build of
    the library, and the app does the same on an emulator.
+   **Done 2026-10-03**, with one gap: the cloud machine has no KVM, so no
+   emulator ran — the APK was built (debug, and release through R8) and
+   holds `libsyn_android.so` for both ABIs, but nothing has started it on
+   Android yet. The first run on a device is the first step of phase 1.
+   Found on the way, fixed in the core: `AppState` wrote the point's name as
+   `preset_name`, the web app's key is `presetName` (old spelling still
+   read; its removal is in synesthesia-core's TODO.md). Versions: AGP 9.4.1
+   with its built-in Kotlin 2.4.20, Gradle 9.8.0, Compose BOM 2026.09.00,
+   UniFFI 0.32.2, JNA 5.19.1, NDK 27.2.
 1. **Sound, in the background.** The foreground service with the
    `AudioTrack` thread pulling blocks from the core; play a preset with the
    screen off; the notification; audio focus; feature frames to a meter on

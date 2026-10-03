@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A spot of the reaction growing out of a sound wave: three rings and a
+     sine through the middle. Drawn in the 108dp adaptive-icon grid; the
+     visible area is the central 72dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#E8B04B"
+        android:strokeWidth="3"
+        android:pathData="M54,30a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#C2476E"
+        android:strokeWidth="3"
+        android:pathData="M54,40a14,14 0,1 1,0 28a14,14 0,1 1,0 -28z" />
+    <path
+        android:fillColor="#7FD3E8"
+        android:pathData="M54,49a5,5 0,1 1,0 10a5,5 0,1 1,0 -10z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F4F1EA"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M24,54 C30,40 36,40 42,54 S54,68 60,54 S72,40 78,54 S84,62 84,54" />
+</vector>

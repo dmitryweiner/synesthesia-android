@@ -1,0 +1,10 @@
+[package]
+name = "uniffi-bindgen"
+description = "Generates the Kotlin bindings with the same UniFFI the pinned core was built with."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+syn-ffi = { workspace = true, features = ["cli"] }

@@ -60,8 +60,8 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
 2. **The core lives in its own repository, `synesthesia-core`** *(agreed
    2026-10-03)*. It holds `syn-core` (moved there from `synesthesia-rust`
    together with `assets/` and `golden/`, which its tests and `include_str!`
-   read), the new `syn-session` and `syn-ffi` crates, `scripts/check.sh` and
-   the dump scripts. Changes to the model are committed there; this
+   read), the new `syn-player`, `syn-session` and `syn-ffi` crates,
+   `scripts/check.sh` and the dump scripts. Changes to the model are committed there; this
    repository depends on it as a **cargo git dependency pinned to a
    revision**, bumped on purpose. `synesthesia-rust` is expected to switch
    to the same dependency afterwards, so the console and the phone run one
@@ -77,10 +77,15 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
      the app supplies those. Tests run on the host and pin the behaviour
      `main.ts` has (a press mid-morph starts from what is audible; a load is
      a hard switch and a reseed; Settings closes as one undoable step).
-   - `syn-ffi` is the UniFFI surface: one `SynCore` object exposing the
-     session, block rendering, feature frames, schema, presets, tokens and
-     the CPU picture. Built as a `cdylib` for Android and a `staticlib` for
-     iOS; the Kotlin and Swift bindings are generated from it.
+   - `syn-player` is the render side every app's audio thread needs (built
+     in phase 1): the engine behind a command queue, PCM out in any chunk
+     size, fades, feature frames on the played clock.
+   - `syn-ffi` is the UniFFI surface: functions and records (presets, the
+     schema, tokens) and objects (`SoundPlayer` now; the session and the CPU
+     picture as their phases come). It is a plain Rust library: each app
+     links it into its own native library — a `cdylib` here
+     (`syn-android`), a `staticlib` for iOS — and generates its bindings
+     from that.
 3. **The point is the same point.** `AppState` v1 JSON, unchanged; the 12
    presets, the schema (ranges, defaults, labels, gene list) come from
    `syn-core`'s dumps and are **read through the core**, never re-typed in
@@ -101,17 +106,19 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
      renderer boundary (`Visualizer`-shaped: step on the sim clock, draw on
      the frame clock) is the same either way.
 5. **Audio output: measured first, simplest first.** v1 is a Kotlin thread
-   that pulls blocks from the core (`render(frames) -> FloatArray`, 2 048–4 096
-   frames a call) and blocks in `AudioTrack.write` — the pacing model the
-   console's `PipeSink` proved. `AudioTrack.getUnderrunCount()` is the bench.
-   If it underruns under load (scout running, screen rotating), the audio
-   thread moves into Rust on AAudio (`ndk` crate, `audio` feature; no C++
-   build) and Kotlin only starts and stops it. The feature frames
-   (loudness, swell, brightness, bands, onset, hits, spectrum) are published
-   from the render loop exactly as `syn-audio`'s `Frame`.
+   that pulls PCM from the core (`SoundPlayer.render(frames)`: f32
+   little-endian bytes, 1 024 frames a call, into a 250 ms `AudioTrack`
+   buffer) and blocks in `AudioTrack.write` — the pacing model the console's
+   `PipeSink` proved. `AudioTrack.getUnderrunCount()` is the bench. If it
+   underruns under load (scout running, screen rotating), the audio thread
+   moves into Rust on AAudio (`ndk` crate, `audio` feature; no C++ build)
+   and Kotlin only starts and stops it. The feature frames (loudness, swell,
+   brightness, bands, onset, hits, spectrum) are published from the render
+   loop by `syn-player`, the console's `Frame` moved into the core.
 6. **Realtime discipline carries over.** Nothing allocates or locks on the
-   render path beyond the one FFI call per block; a UI that falls behind
-   loses frames, never sound. The scout runs on its own rayon pool of
+   render path beyond the one FFI call per chunk (which allocates the
+   returned buffer — the price of UniFFI, paid outside the engine); a UI
+   that falls behind loses frames, never sound. The scout runs on its own rayon pool of
    `cores − 2` threads (the console's fix for xruns), on the little cores
    where the scheduler puts it; its render length and rate are settings,
    because a phone pays in battery for 7 × 30 s renders per press.
@@ -132,10 +139,13 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
    Touch on the picture paints growth and a ripple, sampled once per frame
    as the web does. `FLAG_KEEP_SCREEN_ON` while the picture is on screen.
 10. **Sound keeps playing with the screen off** *(agreed 2026-10-03; the
-    reason the app exists)*. The audio thread and the `Session` live in a
-    **foreground service** with a media-style notification (▶/⏹, 👍, 👎),
-    started on ▶ and stopped on ⏹; the Activity binds to it and is only a
-    view. The picture runs only while the Activity is visible; the LFO
+    reason the app exists)*. The sound (and, from phase 2, the `Session`)
+    lives in one `PlaybackController` per process; a **foreground service**
+    with a media-style notification (▶/⏹, from phase 2 also 👍, 👎) keeps
+    the process in front while it plays, started on ▶ and ended on ⏹. The
+    Activity and the service both talk to the controller; the Activity is
+    only a view. (As built in phase 1 — simpler than binding the Activity
+    to the service, with the same lifetime.) The picture runs only while the Activity is visible; the LFO
     clock is the audio clock, so the picture rejoins in sync. Audio focus
     is requested (pause on a call, resume after) and headphone media keys
     map to ▶/⏹. This is part of phase 1, not polish.
@@ -153,33 +163,38 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
 ## Architecture
 
 ```
- Kotlin (Android)                          Rust (portable)
- ┌───────────────────────────┐             ┌──────────────────────────────┐
- │ Compose UI                │  UniFFI     │ syn-ffi  (cdylib / staticlib)│
- │  main · points · details  │ ◄─────────► │  SynCore: session, render,   │
- │  settings (from schema)   │             │  frames, schema, presets,    │
- ├───────────────────────────┤             │  tokens, picture (CPU)       │
- │ AudioTrack thread ────────┼── render ──►│ syn-session: Session (pure)  │
- │ GLES 3.0 renderer ◄───────┼── frame ────│ syn-core (git dep, pinned):  │
- │  7 passes, shaders verbatim│   params   │  dsp · fx · engine · features│
- │ files / DataStore / links │             │  genome · scout · sim · state│
- └───────────────────────────┘             └──────────────────────────────┘
-       later: Swift + Metal / AVAudioEngine around the same syn-ffi
+ Kotlin (Android)                          Rust (portable, synesthesia-core)
+ ┌────────────────────────────┐            ┌──────────────────────────────┐
+ │ Compose UI                 │  UniFFI    │ syn-ffi: functions, records, │
+ │  player · points · details │ ◄────────► │  SoundPlayer, (Session,      │
+ │  settings (from schema)    │            │  Picture as they come)       │
+ ├────────────────────────────┤            │ syn-player: commands → PCM,  │
+ │ PlaybackController ────────┼── render ─►│  fades, frames on the clock  │
+ │  AudioOutput (AudioTrack)  │            │ syn-session: Session (pure)  │
+ │  PlaybackService (fg, MS)  │            │  (phase 2)                   │
+ │ GLES 3.0 renderer ◄────────┼── frame ───│ syn-core: dsp · fx · engine ·│
+ │  7 passes, shaders verbatim│   params   │  features · genome · scout · │
+ │ files / DataStore / links  │            │  sim · state                 │
+ └────────────────────────────┘            └──────────────────────────────┘
+   linked as libsyn_android.so (core/rust/syn-android, pinned by `rev`)
+   later: Swift + Metal / AVAudioEngine around the same syn-ffi
 ```
 
 Repository layout — `synesthesia-core`:
 
 ```
-Cargo.toml            workspace: syn-core, syn-session, syn-ffi
-syn-core/             the model, moved from synesthesia-rust unchanged
+Cargo.toml            workspace: syn-core, syn-player, syn-ffi (+ syn-session)
+syn-core/             the model, moved from synesthesia-rust
 assets/  golden/      its dumps and reference takes, moved with it
-syn-session/          the control logic (decision 2), host tests
+syn-player/           the live render side (phase 1)
+syn-session/          the control logic, host tests (phase 2)
 syn-ffi/              the UniFFI surface (decision 2)
 scripts/check.sh      fmt + clippy + tests; dump-*.mjs against ../synesthesia
+TODO.md               agreed follow-ups (the point's name spelling)
 ```
 
-Repository layout — this one (phase 0 as built; later phases add the
-`app/` packages listed):
+Repository layout — this one (as of phase 1; the later phases add what
+is marked):
 
 ```
 core/                 Android library module: the Rust core + its Kotlin
@@ -190,16 +205,22 @@ core/                 Android library module: the Rust core + its Kotlin
   rust/uniffi-bindgen/ the generator, calling syn-ffi's own, so the
                       bindings always match the scaffolding
   src/test/           JVM tests calling the real core through the bindings
+  src/androidTest/    the same on a device or emulator
 app/                  the application (Kotlin, Compose)
-  src/main/.../audio  AudioTrack sink thread, feature frames      (phase 1)
-  src/main/.../gl     EGL, ping-pong targets, the seven passes    (phase 3)
-  src/main/.../ui     Compose screens
-  src/main/.../store  last point, points, settings, tokens        (phase 4)
-  src/main/assets/shaders/   copied verbatim from the web app by a script
+  src/main/.../audio     AudioOutput (AudioTrack + thread), PlayedClock
+  src/main/.../playback  PlaybackController, PlaybackService
+  src/main/.../ui        PlayerScreen, Meters, BenchScreen
+  src/main/.../bench     Bench (offline render speed per preset)
+  src/main/.../gl        EGL, ping-pong targets, the seven passes  (phase 3)
+  src/main/.../store     last point, points, settings, tokens      (phase 4)
+  src/main/assets/shaders/  copied verbatim from the web app       (phase 3)
+  debug.keystore      the shared debug key (debug APKs install over each other)
 scripts/
   check.sh            rustfmt + clippy on core/rust; JVM tests, lint, APK
   setup-android-sdk.sh  SDK, NDK, Rust targets, cargo-ndk, local.properties
-  sync-shaders.sh     re-copies the shaders from ../synesthesia   (phase 3)
+  android-test-failures.sh  failing instrumented tests with their traces (CI)
+  sync-shaders.sh     re-copies the shaders from ../synesthesia    (phase 3)
+.github/workflows/check.yml  check (as scripts/check.sh) + emulator (API 26, 35)
 ```
 
 `syn-android` is a thin `cdylib` crate whose only dependency is `syn-ffi`
@@ -222,8 +243,10 @@ copied into this repository.
    through R8) and holds `libsyn_android.so` for both ABIs. **On a real
    phone (2026-10-03, by the user): the app starts and lists the presets.**
    Found on the way, fixed in the core: `AppState` wrote the point's name as
-   `preset_name`, the web app's key is `presetName` (old spelling still
-   read; its removal is in synesthesia-core's TODO.md). Versions: AGP 9.4.1
+   `preset_name`, the web app's key is `presetName`; the core now writes
+   `presetName` and reads both. **Agreed afterwards (2026-10-03): the name
+   becomes `preset_name` in all three apps, and the web app changes** — the
+   steps are in synesthesia-core's TODO.md. Versions: AGP 9.4.1
    with its built-in Kotlin 2.4.20, Gradle 9.8.0, Compose BOM 2026.09.00,
    UniFFI 0.32.2, JNA 5.19.1, NDK 27.2.
 1. **Sound, in the background.** The foreground service with the
@@ -256,9 +279,10 @@ copied into this repository.
      Bench screen that renders 10 s of every preset offline and copies a
      report.
    - Tests: the core's player (10, host); `PlayedClock` (JVM); on the CI
-     emulators (API 26, 35): the player through JNA, an `AudioOutput` run
-     whose clock follows the track, the service coming to the front and
-     leaving it.
+     emulators (API 26, 35, green 2026-10-03): the player through JNA, an
+     `AudioOutput` run whose clock follows the track, a second run on the
+     same player once the first has let go of it, the service coming to the
+     front and leaving it, stop-and-play at once.
    **To measure on a phone** (then decision 5 is settled and written here):
    the Bench report; `core %` and underruns after 30 min with the screen off;
    and by hand — the lock screen and headphone controls, a call pausing and
@@ -292,21 +316,17 @@ copied into this repository.
 
 ## Open questions (for the user)
 
-1. **Creating `synesthesia-core`.** The GitHub integration this session runs
-   under may not create repositories (403). Please create an empty public
-   repository `dmitryweiner/synesthesia-core` (no README, no license — the
-   import brings its own) and allow this session to push to it; the first
-   commit will be the import from `synesthesia-rust` at `b93a55f`.
-2. **The scout on a phone.** Full-quality renders (30 s at 22 kHz, as the
-   console) or the web's cheaper surrogate (24 s at 8 kHz)? Not a question
-   for now: it is measured in phase 1 and the length and rate become
-   settings; written here once the number exists.
+1. **The scout on a phone** (phase 2). Full-quality renders (30 s at
+   22 kHz, as the console) or the web's cheaper surrogate (24 s at 8 kHz)?
+   Decided by measuring: phase 1's Bench gives the render speed, phase 2
+   measures a scout batch's wall time and battery; the length and rate
+   become settings either way.
 
 Resolved on 2026-10-03: the core language (Rust, decision 1), the separate
-repository (decision 2), no sharing (decision 8), background sound
-(decision 10), and the network policy of the build environment (open now;
-the Android SDK 35, build-tools, NDK 27 and the Rust Android targets are
-installed in the session).
+repository (decision 2; `synesthesia-core` created by the user), no
+sharing (decision 8), background sound (decision 10), the network policy of
+the cloud build environment, and the spelling of the point's name
+(`preset_name` everywhere; synesthesia-core's TODO.md).
 
 ## Don'ts (inherited)
 

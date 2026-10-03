@@ -28,17 +28,25 @@ source. Every debug build is signed with the same key
 
 ## Building
 
-Needs a JDK 17+ (21 is what CI uses), Rust (stable), and the Android SDK:
+Needs a JDK 17+ (21 is what CI uses), Rust (current stable — CI uses the
+latest, and a newer clippy finds more), and the Android SDK. With Android
+Studio, point `ANDROID_HOME` at its SDK (`~/Android/Sdk` on Linux,
+`~/Library/Android/sdk` on macOS); the script installs whatever of the rest
+is missing:
 
 ```bash
-ANDROID_HOME=/opt/android-sdk scripts/setup-android-sdk.sh   # once: SDK, NDK, Rust targets, cargo-ndk
-scripts/check.sh                                             # after every change
-./gradlew :app:installDebug                                  # onto a connected device
+ANDROID_HOME=~/Android/Sdk scripts/setup-android-sdk.sh   # once: SDK packages, NDK, Rust targets, cargo-ndk
+rustup update stable                                      # before checking, to match CI
+scripts/check.sh                                          # after every change
+./gradlew :app:installDebug                               # onto a connected phone (USB debugging)
+./gradlew connectedDebugAndroidTest                       # the instrumented tests, on that phone
 ```
 
 `scripts/check.sh` runs rustfmt and clippy on `core/rust`, the JVM tests that
 call the real core through the generated Kotlin, Android lint, and builds
-the debug APK.
+the debug APK. The instrumented tests (`src/androidTest`: the core through
+JNA on Android, the audio output, the service) need a device or an
+emulator; CI runs them on emulators with API 26 and 35.
 
 ## How the core gets in
 

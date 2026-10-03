@@ -13,8 +13,10 @@ English; the user talks to agents in Russian.
 
 ```bash
 scripts/setup-android-sdk.sh   # a fresh machine or cloud session: SDK, NDK, Rust targets, cargo-ndk
+rustup update stable           # CI uses the latest stable; an older clippy misses its lints
 scripts/check.sh               # after every change
 ./gradlew :core:testDebugUnitTest   # the bindings against the real core only
+./gradlew connectedDebugAndroidTest # instrumented tests, with a phone or emulator attached
 ```
 
 **Developing against a local core checkout** (not committed — the file is
@@ -43,16 +45,23 @@ committing here.
 - **The Rust side is always built in release** — the DSP cannot play in
   real time unoptimized.
 - **Realtime discipline**: nothing allocates, locks or logs on the audio
-  path; a UI that falls behind loses frames, never sound.
+  path, beyond the one `SoundPlayer.render` call per chunk (UniFFI
+  allocates the returned buffer); a UI that falls behind loses frames,
+  never sound. `PlaybackController` starts a new `AudioOutput` only once the
+  stopped one `isDoneWithPlayer` — two threads must never render one player.
 - **Measure first**: performance claims come with a number from a bench,
   written into PLAN.md with a date.
 - **No build outputs in git.** The debug APK for the user is the CI
   artifact `app-debug`. Debug builds are signed with `app/debug.keystore`
   so APKs from any run install over each other; never replace that key.
-- There is no emulator in the cloud sessions (no KVM): what runs there is
-  the JVM tests, lint and the APK build. The instrumented tests
-  (`src/androidTest`) run on an emulator in CI (`emulator` job, API 26 and
-  35). Say so when a change could only be checked on a device.
+- **Where the instrumented tests run**: on a local machine, on an attached
+  phone or emulator (`connectedDebugAndroidTest`). In a cloud session there
+  is no emulator (no KVM) — there it is the JVM tests, lint and the APK
+  build, and the instrumented tests run in CI (`emulator` job, API 26 and
+  35), which prints each failing test's trace into the log. Say so when a
+  change could only be checked on a device.
+- **Things the user checks by hand on a phone** are listed per phase in
+  PLAN.md; the debug APK is the CI artifact `app-debug`.
 
 ## Module map
 
@@ -68,6 +77,8 @@ app/                  the application (Compose)
                       PlaybackService (foreground, MediaSession, notification)
   ui/                 PlayerScreen, Meters, BenchScreen
   bench/              Bench: offline render speed per preset
-scripts/              check.sh, setup-android-sdk.sh
+app/debug.keystore    the shared debug key; never replace it
+scripts/              check.sh, setup-android-sdk.sh, android-test-failures.sh (CI)
 gradle/libs.versions.toml   every version, the NDK and the SDK levels
+.github/workflows/check.yml check + emulator (API 26, 35); the APK artifact
 ```

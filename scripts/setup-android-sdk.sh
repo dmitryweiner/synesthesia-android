@@ -5,12 +5,16 @@
 # local.properties. Versions come from gradle/libs.versions.toml, so this
 # script never drifts from the build. Safe to run again.
 #
-#   ANDROID_HOME=/opt/android-sdk scripts/setup-android-sdk.sh
+#   ANDROID_HOME=~/Android/Sdk scripts/setup-android-sdk.sh   (Android Studio's SDK)
+#   ANDROID_HOME=/opt/android-sdk scripts/setup-android-sdk.sh (a bare machine)
 set -e
 cd "$(dirname "$0")/.."
 
 : "${ANDROID_HOME:=/opt/android-sdk}"
-CMDLINE_TOOLS_ZIP=commandlinetools-linux-11076708_latest.zip
+case "$(uname -s)" in
+  Darwin) CMDLINE_TOOLS_ZIP=commandlinetools-mac-11076708_latest.zip ;;
+  *) CMDLINE_TOOLS_ZIP=commandlinetools-linux-11076708_latest.zip ;;
+esac
 
 catalog() { sed -n "s/^$1 = \"\(.*\)\"/\1/p" gradle/libs.versions.toml; }
 NDK=$(catalog ndk)

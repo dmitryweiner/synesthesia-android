@@ -15,7 +15,7 @@ class MainActivityTest {
 
     @Test
     fun theBuiltInPointsAreListed() {
-        compose.onNodeWithText("Fractal garden").assertExists()
-        compose.onNodeWithText("12 built-in points", substring = true).assertExists()
+        compose.onNodeWithText("Subway basalt").assertExists()
+        compose.onNodeWithText("▶ Play").assertExists()
     }
 }

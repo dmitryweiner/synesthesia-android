@@ -26,4 +26,34 @@ class CoreOnDeviceTest {
         requireNotNull(json)
         assertTrue(json.contains("\"presetName\":\"Fractal garden\""))
     }
+
+    /**
+     * An object across the FFI on a real Android runtime: on API 26 there is
+     * no java.lang.ref.Cleaner, and the bindings must fall back to JNA's.
+     */
+    @Test
+    fun aPlayerRendersFloatPcmAndPublishesFrames() {
+        SoundPlayer(48_000u, requireNotNull(presetStateJson(0u))).use { p ->
+            p.fadeIn()
+            var bytes = ByteArray(0)
+            repeat(48) { bytes = p.render(1024u) }
+            assertEquals(1024 * 4, bytes.size)
+            assertEquals(48 * 1024 / 48_000.0, p.time(), 1e-9)
+            val frame = requireNotNull(p.frameAt(0.5))
+            assertTrue(frame.time <= 0.5)
+            assertEquals(64, frame.spectrum.size)
+            p.switchTo(requireNotNull(presetStateJson(5u)))
+            p.render(1024u)
+        }
+    }
+
+    @Test
+    fun aMalformedPointIsAnExceptionNotACrash() {
+        try {
+            SoundPlayer(48_000u, "{}")
+            throw AssertionError("expected CoreException")
+        } catch (e: CoreException.InvalidPoint) {
+            assertTrue(e.reason.isNotEmpty())
+        }
+    }
 }

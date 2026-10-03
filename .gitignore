@@ -9,3 +9,4 @@ captures/
 
 # Rust
 /core/rust/target/
+/core/rust/.cargo/config.toml

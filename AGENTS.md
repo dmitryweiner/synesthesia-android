@@ -17,6 +17,18 @@ scripts/check.sh               # after every change
 ./gradlew :core:testDebugUnitTest   # the bindings against the real core only
 ```
 
+**Developing against a local core checkout** (not committed — the file is
+in `.gitignore`):
+
+```toml
+# core/rust/.cargo/config.toml
+[patch."https://github.com/dmitryweiner/synesthesia-core"]
+syn-ffi = { path = "/path/to/synesthesia-core/syn-ffi" }
+```
+
+Remove it, push the core, bump `rev` and run `scripts/check.sh` before
+committing here.
+
 ## Rules
 
 - **Logic goes into the core, not into Kotlin.** If two apps would need the
@@ -50,6 +62,12 @@ core/                 Android library: the Rust core + its generated Kotlin
   rust/               cargo workspace: syn-android (cdylib), uniffi-bindgen
   src/test/           JVM tests that call the real core through the bindings
 app/                  the application (Compose)
+  SynesthesiaApp      holds the one PlaybackController
+  audio/              AudioOutput (AudioTrack + its thread), PlayedClock
+  playback/           PlaybackController (focus, noisy, wake lock),
+                      PlaybackService (foreground, MediaSession, notification)
+  ui/                 PlayerScreen, Meters, BenchScreen
+  bench/              Bench: offline render speed per preset
 scripts/              check.sh, setup-android-sdk.sh
 gradle/libs.versions.toml   every version, the NDK and the SDK levels
 ```

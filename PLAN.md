@@ -1,7 +1,8 @@
 # Synesthesia for Android — plan & decisions
 
 *Status: the plan was agreed with the user on 2026-10-03. Phase 0 is done
-(2026-10-03); phase 1 is next.*
+(2026-10-03). Phase 1 is built and tested on emulators; its measurements on
+a phone are pending.*
 
 The third home of [synesthesia](https://github.com/dmitryweiner/synesthesia):
 one point in a ~500-gene space makes sound (21 formula generators, an FX
@@ -218,8 +219,8 @@ copied into this repository.
    in CI instead (the `emulator` job, API 26 and 35): an instrumented test
    loads the core through JNA on Android and lists the presets, and the app
    starts and shows them. Locally: the APK is built (debug, and release
-   through R8) and holds `libsyn_android.so` for both ABIs. A real phone
-   has not run it yet — that is the first step of phase 1.
+   through R8) and holds `libsyn_android.so` for both ABIs. **On a real
+   phone (2026-10-03, by the user): the app starts and lists the presets.**
    Found on the way, fixed in the core: `AppState` wrote the point's name as
    `preset_name`, the web app's key is `presetName` (old spelling still
    read; its removal is in synesthesia-core's TODO.md). Versions: AGP 9.4.1
@@ -230,6 +231,39 @@ copied into this repository.
    screen off; the notification; audio focus; feature frames to a meter on
    screen; bench: underruns and CPU per preset on a device (decision 5 is
    decided here).
+   **Built 2026-10-03:**
+   - Core: `syn-player` (synesthesia-core) — the engine behind a command
+     queue, whole 128-sample blocks whatever the device's chunk size (the
+     live sound is bit-identical to the offline render), fades on start and
+     stop, a feature frame every 8 blocks stamped on the engine clock;
+     through the FFI as `SoundPlayer`, `AudioFrame`, `render_stats`.
+   - `AudioOutput`: float PCM, mono, the device's own rate, 1024-frame
+     chunks into a 250 ms `AudioTrack` buffer, blocking writes, the thread at
+     `THREAD_PRIORITY_URGENT_AUDIO`. Latency does not matter here (a change
+     morphs over 2 s), robustness does — hence the deep buffer. The meters
+     ask for the frame at the *played* position (`PlayedClock`, which
+     survives the 32-bit wrap of the head position), not the rendered one.
+   - `PlaybackController` (one per process): audio focus (a call pauses and
+     the end of it resumes; losing it for good stops), headphones unplugged
+     stops, a partial wake lock while playing.
+   - `PlaybackService`: foreground service of type `mediaPlayback`, a
+     `MediaSession` (lock screen, headphone buttons, system media
+     controls), a MediaStyle notification with ⏹ / ▶; after a stop the
+     notification stays with ▶ and the service ends.
+   - The screen: ▶/⏹, the point, the features as meters and a 64-band
+     spectrum, the output's cost (`core %` = time in the core per second of
+     audio, peak chunk, underruns); the presets (tap to switch, live); a
+     Bench screen that renders 10 s of every preset offline and copies a
+     report.
+   - Tests: the core's player (10, host); `PlayedClock` (JVM); on the CI
+     emulators (API 26, 35): the player through JNA, an `AudioOutput` run
+     whose clock follows the track, the service coming to the front and
+     leaving it.
+   **To measure on a phone** (then decision 5 is settled and written here):
+   the Bench report; `core %` and underruns after 30 min with the screen off;
+   and by hand — the lock screen and headphone controls, a call pausing and
+   resuming the sound, unplugging headphones, switching presets while
+   playing without a click.
 2. **Session.** `syn-session` ported from `main.ts` / `main.rs` with host
    tests; the main screen: 👎 👍 🎲 ↩, status, point name, morph audible;
    👍/👎 from the notification.

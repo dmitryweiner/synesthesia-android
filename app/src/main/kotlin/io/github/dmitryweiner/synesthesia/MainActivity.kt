@@ -1,58 +1,64 @@
 package io.github.dmitryweiner.synesthesia
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
-import io.github.dmitryweiner.synesthesia.core.PresetInfo
-import io.github.dmitryweiner.synesthesia.core.coreVersion
-import io.github.dmitryweiner.synesthesia.core.presets
+import io.github.dmitryweiner.synesthesia.ui.BenchScreen
+import io.github.dmitryweiner.synesthesia.ui.PlayerScreen
 
-/**
- * Phase 0 (PLAN.md): proves the chain — the Rust core, built for this
- * device, called through the generated bindings — by listing the built-in
- * presets it holds.
- */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val controller = (application as SynesthesiaApp).playback
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
-                PresetList(remember { presets() }, remember { coreVersion() })
+                var bench by rememberSaveable { mutableStateOf(false) }
+                // Android 13+ asks before showing the playback notification.
+                // The sound plays whatever the answer: it is asked once, on
+                // the first ▶.
+                val askNotifications = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission(),
+                ) { controller.play() }
+                val play = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+                        !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) &&
+                        !askedForNotifications
+                    ) {
+                        askedForNotifications = true
+                        askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        controller.play()
+                    }
+                }
+                Scaffold { padding ->
+                    if (bench) {
+                        BackHandler { bench = false }
+                        BenchScreen(controller.sampleRate, onBack = { bench = false }, Modifier.padding(padding))
+                    } else {
+                        PlayerScreen(controller, onPlay = play, onBench = { bench = true }, Modifier.padding(padding))
+                    }
+                }
             }
         }
     }
-}
 
-@Composable
-private fun PresetList(presets: List<PresetInfo>, version: String) {
-    Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-        LazyColumn(modifier = Modifier.padding(padding)) {
-            item {
-                ListItem(
-                    headlineContent = { Text("Synesthesia", style = MaterialTheme.typography.headlineSmall) },
-                    supportingContent = { Text("core $version · ${presets.size} built-in points") },
-                )
-            }
-            items(presets, key = { it.index.toInt() }) { p ->
-                ListItem(
-                    headlineContent = { Text(p.name) },
-                    leadingContent = { Text("${p.index}") },
-                )
-            }
-        }
-    }
+    private var askedForNotifications = false
 }

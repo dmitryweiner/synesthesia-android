@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Synesthesia</string>
+    <string name="channel_playback">Playback</string>
+    <string name="action_play">Play</string>
+    <string name="action_stop">Stop</string>
+    <string name="playing">Playing</string>
+    <string name="stopped">Stopped</string>
+    <string name="paused_for_focus">Paused while another app plays</string>
 </resources>

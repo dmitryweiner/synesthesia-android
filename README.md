@@ -13,10 +13,14 @@ repository is the Android app around it: the audio device, the GPU picture,
 storage, the background service and the interface, in Kotlin.
 [PLAN.md](PLAN.md) has the decisions and the phases.
 
-**Status: phase 1.** The built-in points play, also with the screen off
-(a foreground service with a media notification and lock-screen
-controls), and the screen shows what the sound is doing. 👍/👎 and the
-picture are the next phases.
+**Status: phase 2.** The built-in points play, also with the screen off
+(a foreground service with a media notification and lock-screen controls),
+the screen shows what the sound is doing, and 👍 👎 🎲 ↩ steer the search:
+a press glides the sound to where it leads over about two seconds, and
+while you listen the core renders and scores candidates in the background
+so that the next press takes the best one it found. The notification
+carries 👎 ⏹ 👍, so the search runs with the phone locked. The picture is
+the next phase.
 
 ## Trying it on a phone
 

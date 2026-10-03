@@ -15,36 +15,54 @@ import io.github.dmitryweiner.synesthesia.audio.AudioOutput
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
 import io.github.dmitryweiner.synesthesia.core.PresetInfo
+import io.github.dmitryweiner.synesthesia.core.Session
+import io.github.dmitryweiner.synesthesia.core.SessionConfig
+import io.github.dmitryweiner.synesthesia.core.SessionEffect
+import io.github.dmitryweiner.synesthesia.core.SessionView
 import io.github.dmitryweiner.synesthesia.core.SoundPlayer
-import io.github.dmitryweiner.synesthesia.core.presetStateJson
+import io.github.dmitryweiner.synesthesia.core.defaultSessionConfig
 import io.github.dmitryweiner.synesthesia.core.presets
+import java.util.concurrent.Executors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * The sound of the app: which point plays, whether it plays, and everything
- * Android asks of an app that plays in the background — audio focus (a call
- * pauses it, the end of the call resumes it), headphones unplugged (stops),
- * a CPU wake lock while it plays, and the foreground service with its
- * notification ([PlaybackService]).
+ * The session of the app: which point it is on, whether it plays, and
+ * everything Android asks of an app that plays in the background — audio
+ * focus (a call pauses it, the end of the call resumes it), headphones
+ * unplugged (stops), a CPU wake lock while it plays, and the foreground
+ * service with its notification ([PlaybackService]).
  *
- * Main thread only. The audio itself runs on [AudioOutput]'s thread.
+ * The control logic itself is the core's ([Session], PLAN.md decision 2): the
+ * 👍 👎 🎲 ↩, the morph, the scout's scheduling, the point's name and the
+ * status line. This class is what the core has no business knowing: a clock,
+ * an audio device, a background thread and Android's lifecycle. Every session
+ * call answers with effects, and [applyEffects] is the whole of what they mean here.
+ *
+ * Main thread only. The audio runs on [AudioOutput]'s thread; one scout job
+ * at a time runs on [scouts].
  */
 @MainThread
-class PlaybackController(private val context: Context) {
+class PlaybackController(
+    private val context: Context,
+    config: SessionConfig = defaultSessionConfig(),
+) {
     data class State(
         val playing: Boolean = false,
         /** Stopped by another app taking the sound for a while; resumes by itself. */
         val pausedForFocus: Boolean = false,
-        val presetIndex: Int = 0,
-        val pointName: String = "",
+        /** What the core's session says about itself: name, step, status, undo. */
+        val session: SessionView,
         /** Something the user should know, e.g. why the sound stopped. */
         val message: String? = null,
     ) {
         /** The service stays in the foreground while this holds. */
         val holdsForeground: Boolean get() = playing || pausedForFocus
+
+        /** The point's name with its step count — the title and the notification. */
+        val pointName: String get() = session.name
     }
 
     val presets: List<PresetInfo> = presets()
@@ -55,7 +73,24 @@ class PlaybackController(private val context: Context) {
     val sampleRate: Int =
         audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 48_000
 
-    private val _state = MutableStateFlow(State(presetIndex = 0, pointName = presets.first().name))
+    /**
+     * A session on the first built-in point, with its own seed, so two runs of
+     * the app do not explore the same way. (Phase 4 restores the last point
+     * instead of starting here.)
+     */
+    private val session: Session =
+        Session.onPreset(0u, config.copy(seed = System.nanoTime().toUInt()))
+
+    /**
+     * The thread a scout job is handed to. The rendering itself spreads over
+     * the core's own pool (`cores − 2` threads, PLAN.md decision 6); this
+     * thread only waits for it, so nothing on screen ever waits.
+     */
+    private val scouts = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "syn-scout-host").apply { priority = Thread.MIN_PRIORITY }
+    }
+
+    private val _state = MutableStateFlow(State(session = session.view()))
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val main = Handler(Looper.getMainLooper())
@@ -64,6 +99,7 @@ class PlaybackController(private val context: Context) {
     /** The run that was stopped last; it may still be fading out of the player. */
     private var stopping: AudioOutput? = null
     private val launchRunnable = Runnable { launchOutput() }
+    private val tickRunnable = Runnable { tick() }
 
     private val wakeLock = context.getSystemService(PowerManager::class.java)
         .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "synesthesia:playback")
@@ -81,19 +117,30 @@ class PlaybackController(private val context: Context) {
     }
     private var noisyRegistered = false
 
-    /** Makes built-in point [index] the current one; if sound plays, it switches at once. */
+    // --- what the user presses ---------------------------------------------
+
+    /** 👍 more of this: the search carries on the way it was going. */
+    fun like() = applyEffects(session.like(now()))
+
+    /** 👎 not this: back, and elsewhere. */
+    fun dislike() = applyEffects(session.dislike(now()))
+
+    /** 🎲 somewhere else entirely, near another built-in point. */
+    fun surprise() = applyEffects(session.surprise(now()))
+
+    /** ↩ back one step. */
+    fun undo() = applyEffects(session.undo(now()))
+
+    /** Loads built-in point [index]: a fresh search, and a hard switch if sound plays. */
     fun select(index: Int) {
-        val preset = presets.getOrNull(index) ?: return
-        val json = presetStateJson(index.toUInt()) ?: return
-        _state.update { it.copy(presetIndex = index, pointName = preset.name, message = null) }
-        player?.switchTo(json)
+        if (index !in presets.indices) return
+        applyEffects(session.loadPreset(now(), index.toUInt()))
     }
 
     fun toggle() = if (_state.value.holdsForeground) stop() else play()
 
     fun play() {
-        val s = _state.value
-        if (s.playing) return
+        if (_state.value.playing) return
         if (audioManager.requestAudioFocus(focusRequest) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             _state.update { it.copy(message = "Another app is holding the sound (a call?)") }
             return
@@ -108,9 +155,10 @@ class PlaybackController(private val context: Context) {
         stopOutput()
         audioManager.abandonAudioFocusRequest(focusRequest)
         _state.update { it.copy(playing = false, pausedForFocus = false) }
+        applyEffects(session.setPlaying(now(), false))
     }
 
-    /** What is being heard now, for the meters and the picture. */
+    /** What is being heard now, for the meters and (phase 3) the picture. */
     fun frameNow(): AudioFrame? {
         val out = output ?: return null
         return player?.frameAt(out.playedSeconds())
@@ -118,10 +166,70 @@ class PlaybackController(private val context: Context) {
 
     fun stats(): OutputStats? = output?.stats()
 
+    /** Threads the scout renders on — for the bench and the details page. */
+    fun scoutThreads(): Int = session.scoutThreads().toInt()
+
+    // --- the session's effects ---------------------------------------------
+
+    /**
+     * The clock the pure session has none of: monotonic seconds, the same one
+     * every call is stamped with.
+     *
+     * It stands still while the device is in deep sleep, and so does the
+     * `Handler` that ticks — which is the right pair: the wake lock keeps
+     * both running while the sound plays, and when nothing plays a morph that
+     * waited through a sleep lands on its target at the next tick.
+     */
+    private fun now(): Double = System.nanoTime() / 1_000_000_000.0
+
+    /**
+     * Carries out what a session call asked for, and keeps the clock running
+     * exactly as long as the session has something due — one main-thread
+     * wake-up per morph frame, and none at all in between (the screen may be
+     * off for hours).
+     */
+    private fun applyEffects(effects: List<SessionEffect>) {
+        for (effect in effects) {
+            when (effect) {
+                // A morph: the parameters glide, the engine is not rebuilt.
+                is SessionEffect.SetPoint -> player?.setPoint(effect.pointJson)
+                // A load: the previous point's reverb and delay tails go.
+                is SessionEffect.SwitchTo -> player?.switchTo(effect.pointJson)
+                // Phase 3: the picture starts over from a fresh seed.
+                SessionEffect.Reseed -> Unit
+                // Phase 4: last-point.json in filesDir.
+                is SessionEffect.SaveLastPoint -> Unit
+                // Seconds of rendering, off this thread. A result for a point
+                // the user has left is dropped by the session, by its version.
+                SessionEffect.StartScout -> scouts.execute {
+                    val done = session.runScout()
+                    main.post { applyEffects(done) }
+                }
+                // The line is in the view, which every applyEffects publishes.
+                is SessionEffect.Status -> Unit
+            }
+        }
+        _state.update { it.copy(session = session.view()) }
+        if (session.wantsTick()) {
+            main.removeCallbacks(tickRunnable)
+            main.postDelayed(tickRunnable, TICK_MS)
+        } else {
+            main.removeCallbacks(tickRunnable)
+        }
+    }
+
+    private fun tick() = applyEffects(session.tick(now()))
+
+    // --- the sound ---------------------------------------------------------
+
     @SuppressLint("WakelockTimeout") // held exactly while the sound plays, released in stopOutput()
     private fun startOutput() {
-        if (player == null) {
-            player = SoundPlayer(sampleRate.toUInt(), checkNotNull(presetStateJson(_state.value.presetIndex.toUInt())))
+        val existing = player
+        if (existing == null) {
+            player = SoundPlayer(sampleRate.toUInt(), session.livePointJson())
+        } else {
+            // The point may have moved while nothing was playing.
+            existing.setPoint(session.livePointJson())
         }
         _state.update { it.copy(playing = true, pausedForFocus = false, message = null) }
         launchOutput()
@@ -130,6 +238,7 @@ class PlaybackController(private val context: Context) {
             context.registerReceiver(noisy, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
             noisyRegistered = true
         }
+        applyEffects(session.setPlaying(now(), true))
     }
 
     /** Starts a run once the last one has let go of the player (a few hundred ms at most). */
@@ -186,8 +295,20 @@ class PlaybackController(private val context: Context) {
             -> if (_state.value.playing) {
                 stopOutput()
                 _state.update { it.copy(playing = false, pausedForFocus = true) }
+                // A change still arrives while the call lasts; it is simply
+                // not pushed to a sound nobody can hear.
+                applyEffects(session.setPlaying(now(), false))
             }
             AudioManager.AUDIOFOCUS_GAIN -> if (_state.value.pausedForFocus) startOutput()
         }
+    }
+
+    private companion object {
+        /**
+         * How often the session is stepped while something is due: a morph
+         * pushes at most every 50 ms (the core's `push_interval`), so this is
+         * twice as often and no more.
+         */
+        const val TICK_MS = 25L
     }
 }

@@ -37,6 +37,10 @@ committing here.
   same code (the morph, the explorer, scout scheduling, the points model),
   it belongs in synesthesia-core (`syn-core` or `syn-session`), exposed
   through `syn-ffi`. Kotlin is the device, the screen, storage, lifecycle.
+  The shape this takes: a session call answers with effects, and
+  `PlaybackController.applyEffects` is the whole of what they mean on Android. A new
+  behaviour is a new effect in `syn-session`, with its host test, not a new
+  `if` in Kotlin.
 - **Changing the core**: commit and push in synesthesia-core (run its
   `scripts/check.sh`), then bump `rev` in `core/rust/Cargo.toml` here and
   run this repo's `scripts/check.sh`. Never vendor or patch the core here.
@@ -73,9 +77,13 @@ core/                 Android library: the Rust core + its generated Kotlin
 app/                  the application (Compose)
   SynesthesiaApp      holds the one PlaybackController
   audio/              AudioOutput (AudioTrack + its thread), PlayedClock
-  playback/           PlaybackController (focus, noisy, wake lock),
-                      PlaybackService (foreground, MediaSession, notification)
-  ui/                 PlayerScreen, Meters, BenchScreen
+  playback/           PlaybackController — the core's Session plus what it
+                      has none of: a clock (nanoTime as `now`), a 25 ms tick
+                      while `wantsTick`, a thread for the scout, audio focus,
+                      noisy, the wake lock;
+                      PlaybackService (foreground, MediaSession, notification
+                      with 👎 ⏹/▶ 👍)
+  ui/                 PlayerScreen (the presses, the status), Meters, BenchScreen
   bench/              Bench: offline render speed per preset
 app/debug.keystore    the shared debug key; never replace it
 scripts/              check.sh, setup-android-sdk.sh, android-test-failures.sh (CI)

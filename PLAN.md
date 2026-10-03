@@ -19,15 +19,15 @@ in Russian — the same rule as the sibling projects.
 |---|---|---|
 | 0 | Scaffold: core repo, Gradle + cargo-ndk + UniFFI | ✅ done 2026-10-03, runs on a phone |
 | 1 | Sound, in the background | ✅ done 2026-10-03, plays on a phone with the screen off; numbers still to take (see phase 1) |
-| 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ⏭ **next** |
-| 3 | Picture (GLES 3.0) | — |
+| 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ✅ built 2026-10-03; to be listened to on a phone (see phase 2) |
+| 3 | Picture (GLES 3.0) | ⏭ **next** |
 | 4 | Points and tokens | — |
 | 5 | Settings | — |
 | 6 | Polish | — |
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`f6b47cc`); this repository, `main` (phases 0 and 1 merged on
+`5bfa187`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
 
 ## What the two existing ports teach
@@ -81,8 +81,9 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
    revision**, bumped on purpose. `synesthesia-rust` is expected to switch
    to the same dependency afterwards, so the console and the phone run one
    core — that change is made in that repository, not here.
-   - **The control logic moves into the core as `Session`.** `syn-session`
-     holds what `main.ts` and `main.rs` both implement: the explorer plus the
+   - **The control logic moves into the core as `Session`** *(built in phase
+     2, 2026-10-03)*. `syn-session` holds what `main.ts` and `main.rs` both
+     implement: the explorer plus the
      2 s morph (`from, to, started`), step count, undo depth, scout
      scheduling (the 800 ms settle, the version check, picking the best
      candidate on a press), 🎲 near a preset, load/restore, the points list
@@ -181,12 +182,13 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
  Kotlin (Android)                          Rust (portable, synesthesia-core)
  ┌────────────────────────────┐            ┌──────────────────────────────┐
  │ Compose UI                 │  UniFFI    │ syn-ffi: functions, records, │
- │  player · points · details │ ◄────────► │  SoundPlayer, (Session,      │
- │  settings (from schema)    │            │  Picture as they come)       │
+ │  player · points · details │ ◄────────► │  SoundPlayer, Session,       │
+ │  settings (from schema)    │            │  (Picture as it comes)       │
  ├────────────────────────────┤            │ syn-player: commands → PCM,  │
  │ PlaybackController ────────┼── render ─►│  fades, frames on the clock  │
- │  AudioOutput (AudioTrack)  │            │ syn-session: Session (pure)  │
- │  PlaybackService (fg, MS)  │            │  (phase 2)                   │
+ │  AudioOutput (AudioTrack)  │── commands►│ syn-session: Session (pure): │
+ │  PlaybackService (fg, MS)  │◄── effects │  presses · morph · scout ·   │
+ │  the clock, the threads    │            │  name · status               │
  │ GLES 3.0 renderer ◄────────┼── frame ───│ syn-core: dsp · fx · engine ·│
  │  7 passes, shaders verbatim│   params   │  features · genome · scout · │
  │ files / DataStore / links  │            │  sim · state                 │
@@ -203,6 +205,7 @@ syn-core/             the model, moved from synesthesia-rust
 assets/  golden/      its dumps and reference takes, moved with it
 syn-player/           the live render side (phase 1)
 syn-session/          the control logic, host tests (phase 2)
+                      Session: presses, morph, scout scheduling, status
 syn-ffi/              the UniFFI surface (decision 2)
 scripts/check.sh      fmt + clippy + tests; dump-*.mjs against ../synesthesia
 TODO.md               agreed follow-ups (the point's name spelling)
@@ -223,7 +226,8 @@ core/                 Android library module: the Rust core + its Kotlin
   src/androidTest/    the same on a device or emulator
 app/                  the application (Kotlin, Compose)
   src/main/.../audio     AudioOutput (AudioTrack + thread), PlayedClock
-  src/main/.../playback  PlaybackController, PlaybackService
+  src/main/.../playback  PlaybackController (the core's Session, the clock,
+                         the scout's thread), PlaybackService
   src/main/.../ui        PlayerScreen, Meters, BenchScreen
   src/main/.../bench     Bench (offline render speed per preset)
   src/main/.../gl        EGL, ping-pong targets, the seven passes  (phase 3)
@@ -307,14 +311,73 @@ copied into this repository.
    off; and by hand — the lock screen and headphone controls, a call
    pausing and resuming the sound, unplugging headphones, switching presets
    while playing without a click.
-2. ⏭ **Session (next).** `syn-session` ported from `main.ts` / `main.rs` with host
+2. ✅ **Session.** `syn-session` ported from `main.ts` / `main.rs` with host
    tests; the main screen: 👎 👍 🎲 ↩, status, point name, morph audible;
    👍/👎 from the notification.
-3. **Picture.** GLES 3.0 renderer with the verbatim shaders, frame params
+   **Built 2026-10-03:**
+   - Core: `syn-session` (synesthesia-core) — `Session`, pure: the explorer's
+     presses, the 2 s morph (ease-in-out, pushed to the sound about 20 times
+     a second), the step count and the point's name, the scout's 800 ms
+     settle and version check, which candidate a press takes, and the
+     two-line status text. `tick(now)` and commands in; `SetPoint`,
+     `SwitchTo`, `Reseed`, `SaveLastPoint`, `StartScout`, `Status` out. 18
+     host tests pin `main.ts`'s feel: a press mid-morph starts from what is
+     audible, a load is a hard switch and a reseed, closing Settings is one
+     undoable step and a jump, a morph lands exactly on its target, nothing
+     is pushed to a sound that is not playing, a stale scout result is
+     dropped, the same seed replays the same session.
+   - Core, on the way: `Explorer::edit` (the web app had it, the Rust port
+     did not) and `same_genome` — the web app's `samePoint`: encoding a point
+     and decoding it moves the last bits of the log-scaled genes, so "did the
+     user change anything in Settings?" cannot be an exact comparison.
+   - Through the FFI: `Session` with `SessionEffect`, `SessionView` and
+     `SessionConfig` (every default read from the core through
+     `default_session_config()`). The scout job waits in `syn-ffi` for a
+     thread the app brings and runs without the session locked, so a render
+     of seconds never makes a press wait.
+   - `PlaybackController` holds the session next to the sound, and is the
+     clock and the threads the core has none of: `System.nanoTime()` as
+     `now`, a main-thread tick every 25 ms **only while the session says
+     something is due** (`wantsTick`: a morph in flight, or a scout waiting)
+     and none at all in between, and one background thread that hands a
+     scout job to the core's pool of `cores − 2` threads.
+   - The screen: the point's name with its step count, 👎 👍 🎲 ↩ (↩ shows
+     its depth), the status line and what the scout has ready; the presets
+     list loads a point.
+   - The notification: 👎 ⏹/▶ 👍, all three in the collapsed view, with the
+     status's first line as its text — the search runs from the lock screen,
+     which is how this app is mostly listened to. The two presses are media
+     session custom actions as well, so a watch can reach them.
+   - Tests: 18 host (the core) + 7 JVM through the real bindings; on a device
+     (CI, API 26 and 35): a press morphs the live sound and settles on the
+     new point, a built-in point loads while the sound plays, the
+     notification's three actions steer the search, and the screen's presses
+     name what they did.
+   **The scout's defaults, and why:** the web app's surrogate — 24 s at
+   8 kHz, 3 candidates a direction — not the console's full-quality 30 s at
+   22 kHz. It ranks candidates nearly as well (Spearman ρ 0.73 against 0.23
+   for 8 s at 16 kHz) because the slow LFOs need the long window and the
+   fractal metrics do not need the high frequencies, and a phone pays for
+   every second of it in battery. It stays a setting (open question 1), and
+   the number that decides it is on screen: the status line says *scouted
+   3 + 3 candidates in X.X s* after every batch.
+   **On a phone (to be done by the user, with the CI artifact `app-debug`):**
+   - 👍 and 👎 while listening: the change arrives as a glide over about two
+     seconds, with no click; pressing again mid-glide carries on from what is
+     heard rather than jumping back.
+   - 🎲 lands near another point and ↩ goes back; the title counts the steps.
+   - With the screen off: 👍 and 👎 on the notification and the lock screen
+     steer the point, and the sound keeps playing through the change.
+   - The numbers to write down here (decision 12): the *scouted … in X.X s*
+     line, and `core %` / underruns on the screen while a batch renders —
+     this is what re-opens decision 5 if anything does.
+3. ⏭ **Picture (next).** GLES 3.0 renderer with the verbatim shaders, frame params
    from the core, onset hits → growth + ripples, touch painting, quality
    probe, the CPU fallback, the GPU-vs-CPU parity test.
 4. **Points and tokens.** Last point restored; 💾 with a name; *My points*;
    export a `#s=` token, import one from the clipboard or an opened link.
+   The points list model (decision 2) moves into `syn-session` here, with the
+   storage it needs: phase 2 emits `SaveLastPoint` and nothing listens yet.
 5. **Settings.** The two-tab page generated from the schema; sound edits
    heard as made; the picture paused while open; close = one undoable step.
 6. **Polish.** Details, help, wake lock while the picture shows, the bench
@@ -335,11 +398,14 @@ copied into this repository.
 
 ## Open questions (for the user)
 
-1. **The scout on a phone** (phase 2). Full-quality renders (30 s at
-   22 kHz, as the console) or the web's cheaper surrogate (24 s at 8 kHz)?
-   Decided by measuring: phase 1's Bench gives the render speed, phase 2
-   measures a scout batch's wall time and battery; the length and rate
-   become settings either way.
+1. **The scout on a phone.** Full-quality renders (30 s at 22 kHz, as the
+   console) or the web's cheaper surrogate (24 s at 8 kHz)? Phase 2 ships the
+   surrogate as the default (3 candidates a direction, on `cores − 2`
+   threads) because battery is the phone's scarce thing, and puts the wall
+   time of every batch on the status line. **Still to decide by measuring**,
+   on a phone: that number, and whether `core %` and underruns move while a
+   batch renders. The length, the rate and the candidate count are settings
+   in phase 5 either way.
 
 Resolved on 2026-10-03: the core language (Rust, decision 1), the separate
 repository (decision 2; `synesthesia-core` created by the user), no

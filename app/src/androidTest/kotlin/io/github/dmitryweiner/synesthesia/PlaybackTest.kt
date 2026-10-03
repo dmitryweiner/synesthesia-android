@@ -107,7 +107,7 @@ class PlaybackTest {
         waitFor("a notification") { nm.activeNotifications.isNotEmpty() }
 
         instrumentation.runOnMainSync { playback.select(3) }
-        assertEquals(3, playback.state.value.presetIndex)
+        assertEquals(playback.presets[3].name, playback.state.value.session.pointName)
 
         instrumentation.runOnMainSync { playback.stop() }
         assertFalse(playback.state.value.playing)

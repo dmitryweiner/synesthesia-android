@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -25,17 +27,19 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
+import io.github.dmitryweiner.synesthesia.core.SessionView
 import io.github.dmitryweiner.synesthesia.core.coreVersion
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
 
 /**
- * Phase 1 (PLAN.md): play a built-in point, keep it playing with the screen
- * off, and see what the sound is doing — the features the picture will read
- * and what the output costs.
+ * Phase 2 (PLAN.md): steer the search by ear. 👍 👎 🎲 ↩ under the meters,
+ * the point's name with its step count, and the status line that says what
+ * the last press did — the picture those presses also paint is phase 3.
  */
 @Composable
 fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: () -> Unit, modifier: Modifier = Modifier) {
@@ -60,7 +64,12 @@ fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: ()
     Column(modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Synesthesia", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    state.session.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text("core ${remember { coreVersion() }}", style = MaterialTheme.typography.labelSmall)
             }
             TextButton(onClick = onBench, enabled = !state.playing) { Text("Bench") }
@@ -72,24 +81,25 @@ fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: ()
             ) {
                 Text(if (state.holdsForeground) "⏹ Stop" else "▶ Play")
             }
-            Column {
-                Text(state.pointName, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    when {
-                        state.pausedForFocus -> "paused while another app plays"
-                        state.playing -> "playing"
-                        else -> "stopped"
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
+            Text(
+                when {
+                    state.pausedForFocus -> "paused while another app plays"
+                    state.playing -> "playing"
+                    else -> "stopped"
+                },
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         Meters(frame, Modifier.fillMaxWidth())
         StatsLine(stats)
+        SearchBar(controller, state.session)
+        StatusLine(state.session, remember { controller.scoutThreads() })
         LazyColumn(Modifier.weight(1f)) {
             itemsIndexed(controller.presets, key = { _, p -> p.index.toInt() }) { i, p ->
-                val selected = i == state.presetIndex
+                // A built-in point is "the one playing" only until a press
+                // makes the point the user's own.
+                val selected = state.session.steps == 0u && state.session.pointName == p.name
                 ListItem(
                     headlineContent = { Text(p.name) },
                     leadingContent = { Text("$i") },
@@ -102,5 +112,57 @@ fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: ()
                 )
             }
         }
+    }
+}
+
+/**
+ * The four presses the whole app is about. They work whether or not the sound
+ * is playing: the session morphs either way, and ▶ starts on the point the
+ * presses have reached.
+ */
+@Composable
+private fun SearchBar(controller: PlaybackController, view: SessionView) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Press("👎", "dislike", Modifier.weight(1f)) { controller.dislike() }
+        Press("👍", "like", Modifier.weight(1f)) { controller.like() }
+        Press("🎲", "surprise", Modifier.weight(1f)) { controller.surprise() }
+        Press(
+            if (view.canUndo) "↩ ${view.undoDepth}" else "↩",
+            "undo",
+            Modifier.weight(1f),
+            enabled = view.canUndo,
+        ) { controller.undo() }
+    }
+}
+
+@Composable
+private fun Press(label: String, tag: String, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+    FilledTonalButton(onClick = onClick, enabled = enabled, modifier = modifier.testTag(tag)) {
+        Text(label, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+/**
+ * What the last press did and what it changed (the core's two lines), and
+ * what the scout is up to — a phone that is rendering candidates is a phone
+ * that is warm, so it says so.
+ */
+@Composable
+private fun StatusLine(view: SessionView, scoutThreads: Int) {
+    Column(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            view.status.ifEmpty { "👍 when you like where it is going, 👎 when you don't" },
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.testTag("status"),
+        )
+        Text(
+            when {
+                view.scoutBusy -> "scouting on $scoutThreads threads…"
+                view.scoutedLike + view.scoutedDislike > 0u ->
+                    "ready: ${view.scoutedLike} 👍 · ${view.scoutedDislike} 👎 · spread %.2f".format(view.sigma)
+                else -> "spread %.2f".format(view.sigma)
+            },
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }

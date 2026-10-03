@@ -1,4 +1,7 @@
-# Synesthesia for Android — plan & decisions (DRAFT, awaiting approval)
+# Synesthesia for Android — plan & decisions
+
+*Status: decisions 1, 2, 8, 10 agreed with the user on 2026-10-03; the plan
+is under a second reading before phase 0 starts.*
 
 The third home of [synesthesia](https://github.com/dmitryweiner/synesthesia):
 one point in a ~500-gene space makes sound (21 formula generators, an FX
@@ -27,11 +30,10 @@ into the core as a platform-free `Session`, and every app becomes
 
 ## Decisions
 
-Numbered so later docs can cite them. ❓ marks the ones that still need the
-user's answer (see *Open questions*).
+Numbered so later docs can cite them. Each agreed decision carries the date.
 
-1. **❓ The core is the existing Rust `syn-core`, reached from Kotlin through
-   UniFFI.** Not a Kotlin re-port of the DSP. Reasons:
+1. **The core is the existing Rust `syn-core`, reached from Kotlin through
+   UniFFI** *(agreed 2026-10-03)*. Not a Kotlin re-port of the DSP. Reasons:
    - `syn-core` is already the thing a portable core should be: no I/O, no
      threads (the scout's `rayon` pool is handed in by the caller), serde
      JSON that is byte-compatible with the web app, 63 golden takes and the
@@ -54,19 +56,30 @@ user's answer (see *Open questions*).
      Kotlin core module, re-ported to Swift later** (simplest build, but the
      Swift app is a third hand port). Either is possible if the user prefers
      Kotlin for the DSP; the phases below stay the same, only phase 1 grows.
-2. **The control logic moves into the core as `Session`.** A new crate
-   `syn-session` (in this repo first; to be upstreamed into
-   `synesthesia-rust` so the console uses it too) holds what `main.ts` and
-   `main.rs` both implement: the explorer plus the 2 s morph (`from, to,
-   started`), step count, undo depth, scout scheduling (the 800 ms settle,
-   the version check, picking the best candidate on a press), 🎲 near a
-   preset, load/restore, the points list model, the status text. It is pure:
-   `tick(now)` and commands in, effects out (`PlayState`, `SwitchTo`,
-   `Reseed`, `SaveLastPoint`, `StartScout`, `Status`). No threads, no clock
-   of its own, no files — the app supplies those. Tests run on the host and
-   pin the behaviour `main.ts` has (a press mid-morph starts from what is
-   audible; a load is a hard switch and a reseed; Settings closes as one
-   undoable step).
+2. **The core lives in its own repository, `synesthesia-core`** *(agreed
+   2026-10-03)*. It holds `syn-core` (moved there from `synesthesia-rust`
+   together with `assets/` and `golden/`, which its tests and `include_str!`
+   read), the new `syn-session` and `syn-ffi` crates, `scripts/check.sh` and
+   the dump scripts. Changes to the model are committed there; this
+   repository depends on it as a **cargo git dependency pinned to a
+   revision**, bumped on purpose. `synesthesia-rust` is expected to switch
+   to the same dependency afterwards, so the console and the phone run one
+   core — that change is made in that repository, not here.
+   - **The control logic moves into the core as `Session`.** `syn-session`
+     holds what `main.ts` and `main.rs` both implement: the explorer plus the
+     2 s morph (`from, to, started`), step count, undo depth, scout
+     scheduling (the 800 ms settle, the version check, picking the best
+     candidate on a press), 🎲 near a preset, load/restore, the points list
+     model, the status text. It is pure: `tick(now)` and commands in,
+     effects out (`PlayState`, `SwitchTo`, `Reseed`, `SaveLastPoint`,
+     `StartScout`, `Status`). No threads, no clock of its own, no files —
+     the app supplies those. Tests run on the host and pin the behaviour
+     `main.ts` has (a press mid-morph starts from what is audible; a load is
+     a hard switch and a reseed; Settings closes as one undoable step).
+   - `syn-ffi` is the UniFFI surface: one `SynCore` object exposing the
+     session, block rendering, feature frames, schema, presets, tokens and
+     the CPU picture. Built as a `cdylib` for Android and a `staticlib` for
+     iOS; the Kotlin and Swift bindings are generated from it.
 3. **The point is the same point.** `AppState` v1 JSON, unchanged; the 12
    presets, the schema (ranges, defaults, labels, gene list) come from
    `syn-core`'s dumps and are **read through the core**, never re-typed in
@@ -104,23 +117,27 @@ user's answer (see *Open questions*).
 7. **Storage is the web app's JSON in the app's files.** `last-point.json`
    and `points.json` in `filesDir`, settings in DataStore. A point file from
    the console opens here and the other way round.
-8. **❓ Links and sharing.** Recommended: the app **opens** the web app's
-   links (`?presetId=` via the points Worker, `#s=` tokens, `?preset=N`)
-   through an intent filter on the GitHub Pages URL, and **shares** the way
-   the web does (POST to the Worker for a short link, long `#s=` link when
-   offline) — so a point found on the phone opens in any browser. The
-   alternative is the console's decision 9: local only, no network. The
-   Worker already validates points with the app's own sanitizer.
+8. **No sharing and no network** *(agreed 2026-10-03)* — the console's
+   decision 9. Points are kept locally under the name the user types; a
+   point can be exported as the web app's `#s=` token and a token pasted
+   from a browser link can be imported (clipboard, and the web app's URL
+   via an intent filter so a shared link opens in the app). No Worker, no
+   HTTP client, no point ids.
 9. **Jetpack Compose, single Activity.** Screens: the picture full-screen
    with the 👎 👍 🎲 ↩ bar and a status line; a top bar with the point's name,
-   ▶ sound, 💾, 🔗, ⚙, ?; Points (bottom sheet: *My points*, built-in);
+   ▶ sound, 💾, a token export/import, ⚙, ?; Points (bottom sheet: *My
+   points*, built-in);
    Details; Settings (two tabs, Audio / Video, generated from the schema).
    Touch on the picture paints growth and a ripple, sampled once per frame
-   as the web does. `FLAG_KEEP_SCREEN_ON` while the sound plays.
-10. **❓ Lifecycle.** v1 plays while the app is in front (as the web does);
-    the sound pauses in `onStop` and the LFO clock stays continuous. A
-    foreground service with a media notification (sound with the screen
-    off) is a separate phase, if wanted.
+   as the web does. `FLAG_KEEP_SCREEN_ON` while the picture is on screen.
+10. **Sound keeps playing with the screen off** *(agreed 2026-10-03; the
+    reason the app exists)*. The audio thread and the `Session` live in a
+    **foreground service** with a media-style notification (▶/⏹, 👍, 👎),
+    started on ▶ and stopped on ⏹; the Activity binds to it and is only a
+    view. The picture runs only while the Activity is visible; the LFO
+    clock is the audio clock, so the picture rejoins in sync. Audio focus
+    is requested (pause on a call, resume after) and headphone media keys
+    map to ▶/⏹. This is part of phase 1, not polish.
 11. **minSdk 26 (Android 8.0), OpenGL ES 3.0 required, arm64-v8a first**
     (plus x86_64 for the emulator; armeabi-v7a only if asked).
 12. **Measure first** — carried over verbatim. Every performance claim comes
@@ -146,14 +163,22 @@ user's answer (see *Open questions*).
        later: Swift + Metal / AVAudioEngine around the same syn-ffi
 ```
 
-Repository layout:
+Repository layout — `synesthesia-core`:
+
+```
+Cargo.toml            workspace: syn-core, syn-session, syn-ffi
+syn-core/             the model, moved from synesthesia-rust unchanged
+assets/  golden/      its dumps and reference takes, moved with it
+syn-session/          the control logic (decision 2), host tests
+syn-ffi/              the UniFFI surface (decision 2)
+scripts/check.sh      fmt + clippy + tests; dump-*.mjs against ../synesthesia
+```
+
+Repository layout — this one:
 
 ```
 core/
-  Cargo.toml          workspace: syn-session, syn-ffi
-  syn-session/        the control logic (decision 2), host tests
-  syn-ffi/            the UniFFI surface; builds for Android via cargo-ndk,
-                      for the host for tests, later for iOS
+  Cargo.toml          one crate, syn-android: cdylib over syn-ffi (git dep)
 app/                  the Android application (Gradle, Kotlin, Compose)
   src/main/.../audio  AudioTrack sink thread, feature frames
   src/main/.../gl     EGL, ping-pong targets, the seven passes
@@ -165,30 +190,36 @@ scripts/
   sync-shaders.sh     re-copies the shaders from ../synesthesia
 ```
 
-`syn-core` is a **pinned cargo git dependency** on `synesthesia-rust` (❓ or
-a submodule — see questions). Nothing in it is copied.
+`core/syn-android` is a thin `cdylib` crate whose only dependency is
+`syn-ffi` from `synesthesia-core`, pinned to a revision. Nothing from the
+core is copied into this repository.
 
 ## Phases
 
-0. **Scaffold.** Gradle project (AGP, Kotlin, Compose), Rust workspace,
-   `cargo-ndk` builds `libsyn_ffi.so` for arm64-v8a and x86_64 into the
-   app's `jniLibs`, UniFFI generates the Kotlin, `scripts/check.sh`. Proof:
-   the app lists the 12 presets from the core on an emulator.
-1. **Sound.** `AudioTrack` thread pulling blocks from the core; play a
-   preset; feature frames to a meter on screen; bench: underruns and CPU per
-   preset on a device (decision 5 is decided here).
+0. **Scaffold.** `synesthesia-core` populated (syn-core + assets + golden
+   moved, `check.sh` green there); `syn-ffi` with a first surface (presets,
+   schema); here: Gradle project (AGP, Kotlin, Compose), `core/syn-android`,
+   `cargo-ndk` builds the `.so` for arm64-v8a and x86_64 into `jniLibs`,
+   UniFFI generates the Kotlin, `scripts/check.sh`. Proof: a JVM test lists
+   the 12 presets through the generated bindings against a host build of
+   the library, and the app does the same on an emulator.
+1. **Sound, in the background.** The foreground service with the
+   `AudioTrack` thread pulling blocks from the core; play a preset with the
+   screen off; the notification; audio focus; feature frames to a meter on
+   screen; bench: underruns and CPU per preset on a device (decision 5 is
+   decided here).
 2. **Session.** `syn-session` ported from `main.ts` / `main.rs` with host
-   tests; the main screen: 👎 👍 🎲 ↩, status, point name, morph audible.
+   tests; the main screen: 👎 👍 🎲 ↩, status, point name, morph audible;
+   👍/👎 from the notification.
 3. **Picture.** GLES 3.0 renderer with the verbatim shaders, frame params
    from the core, onset hits → growth + ripples, touch painting, quality
    probe, the CPU fallback, the GPU-vs-CPU parity test.
-4. **Points, storage, links.** Last point restored; 💾 with a name;
-   *My points*; open `#s=` / `?preset=N` / `?presetId=` links; 🔗 share
-   (decision 8).
+4. **Points and tokens.** Last point restored; 💾 with a name; *My points*;
+   export a `#s=` token, import one from the clipboard or an opened link.
 5. **Settings.** The two-tab page generated from the schema; sound edits
    heard as made; the picture paused while open; close = one undoable step.
-6. **Polish.** Details, help, wake lock, lifecycle (decision 10), the
-   bench numbers written into this file.
+6. **Polish.** Details, help, wake lock while the picture shows, the bench
+   numbers written into this file.
 7. **iOS readiness (optional, small).** Build `syn-ffi` as an XCFramework
    with Swift bindings and call it from a one-file Swift test — proves the
    architecture before the Swift app exists.
@@ -205,19 +236,21 @@ a submodule — see questions). Nothing in it is copied.
 
 ## Open questions (for the user)
 
-1. **Core language** (decision 1): Rust `syn-core` through UniFFI — or a
-   Kotlin re-port (KMP or plain)? The recommendation is Rust.
-2. **How to depend on `synesthesia-rust`**: a pinned cargo git dependency
-   (recommended: no submodule in the Gradle build, bump the rev on purpose),
-   a git submodule, or `syn-core` moved to its own repository?
-   And is upstreaming `syn-session` into `synesthesia-rust` later agreed?
-3. **Sharing** (decision 8): Worker short links + opening web links, or
-   local only?
-4. **Lifecycle** (decision 10): foreground-service playback in v1, or later?
-5. **The build environment**: this cloud session cannot reach
-   `dl.google.com` (the Android SDK, build-tools and NDK are served from
-   there), so nothing Android can be compiled here until the environment's
-   network policy allows that host. Rust and the host tests build fine.
+1. **Creating `synesthesia-core`.** The GitHub integration this session runs
+   under may not create repositories (403). Please create an empty public
+   repository `dmitryweiner/synesthesia-core` (no README, no license — the
+   import brings its own) and allow this session to push to it; the first
+   commit will be the import from `synesthesia-rust` at `b93a55f`.
+2. **The scout on a phone.** Full-quality renders (30 s at 22 kHz, as the
+   console) or the web's cheaper surrogate (24 s at 8 kHz)? Not a question
+   for now: it is measured in phase 1 and the length and rate become
+   settings; written here once the number exists.
+
+Resolved on 2026-10-03: the core language (Rust, decision 1), the separate
+repository (decision 2), no sharing (decision 8), background sound
+(decision 10), and the network policy of the build environment (open now;
+the Android SDK 35, build-tools, NDK 27 and the Rust Android targets are
+installed in the session).
 
 ## Don'ts (inherited)
 

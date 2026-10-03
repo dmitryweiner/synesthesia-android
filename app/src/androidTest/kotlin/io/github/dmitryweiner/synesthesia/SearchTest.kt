@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.dmitryweiner.synesthesia.playback.PlaybackService
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -25,6 +26,20 @@ class SearchTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val playback get() = (context as SynesthesiaApp).playback
+
+    /**
+     * There is one session per process, as there is one in the app, so each
+     * test starts by loading the first point again: that is what clears the
+     * steps and the history another test left behind.
+     */
+    @Before
+    fun startFromTheFirstPoint() {
+        onMain {
+            playback.stop()
+            playback.select(0)
+        }
+        assertEquals(0u, playback.state.value.session.steps)
+    }
 
     @Test
     fun aPressMorphsTheLiveSoundAndSettlesOnTheNewPoint() {

@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,6 +19,16 @@ import org.junit.runner.RunWith
 class MainActivityTest {
     @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
+
+    /** One session per process: start from the first point, as [SearchTest] does. */
+    @Before
+    fun startFromTheFirstPoint() {
+        val app = compose.activity.application as SynesthesiaApp
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            app.playback.stop()
+            app.playback.select(0)
+        }
+    }
 
     @Test
     fun theFirstPointIsShownAndCanBePlayed() {

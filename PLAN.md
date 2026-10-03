@@ -348,11 +348,13 @@ copied into this repository.
      status's first line as its text — the search runs from the lock screen,
      which is how this app is mostly listened to. The two presses are media
      session custom actions as well, so a watch can reach them.
-   - Tests: 18 host (the core) + 7 JVM through the real bindings; on a device
-     (CI, API 26 and 35): a press morphs the live sound and settles on the
-     new point, a built-in point loads while the sound plays, the
-     notification's three actions steer the search, and the screen's presses
-     name what they did.
+   - Tests: 18 host (the core) + 7 JVM through the real bindings; on the CI
+     emulators (API 26 and 35, green 2026-10-03): a press morphs the live
+     sound and settles on the new point, a built-in point loads while the
+     sound plays, the notification's three actions steer the search, and the
+     screen's presses name what they did. One session lives per process, as
+     one does in the app, so each device test loads the first point first —
+     the steps and the history a test leaves are the next one's start.
    **The scout's defaults, and why:** the web app's surrogate — 24 s at
    8 kHz, 3 candidates a direction — not the console's full-quality 30 s at
    22 kHz. It ranks candidates nearly as well (Spearman ρ 0.73 against 0.23

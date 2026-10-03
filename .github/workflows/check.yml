@@ -62,4 +62,12 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
           disable-animations: true
-          script: ./gradlew --console=plain :core:connectedDebugAndroidTest :app:connectedDebugAndroidTest
+          # On failure, print each failing test's stack trace into the log.
+          script: ./gradlew --console=plain --continue :core:connectedDebugAndroidTest :app:connectedDebugAndroidTest || (scripts/android-test-failures.sh; exit 1)
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: android-test-reports-${{ matrix.api-level }}
+          path: |
+            */build/reports/androidTests
+            */build/outputs/androidTest-results

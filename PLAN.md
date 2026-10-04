@@ -444,10 +444,18 @@ copied into this repository.
    both paths drift by the same clock — the driver's.
    On a device, the two are compared where the plan asks: the same seed and
    the same frames into both, and the GPU's picture must agree with the CPU's
-   far more closely than two pictures of different fields do (the control the
-   test measures against). They cannot be identical — the state lives in
-   half floats on the GPU and in f32 here — so the test says *how* close, and
-   fails if the two paths drift apart.
+   to within 8 of 255 per channel after three steps, and far more closely than
+   two pictures of different fields do (15.4 apart — the control the test
+   measures against). They cannot be identical: the state lives in half floats
+   on the GPU and in f32 here.
+   The test earned its keep on the first run: it read 13.8 against a control
+   of 15.4, which is what a picture and its own mirror read, and the mirror
+   was real — the GL surface is Y-up because of the fullscreen triangle, while
+   the CPU picture's first row is the field's first. Each renderer is
+   self-consistent; what had to be fixed is that a finger lands where it was
+   put in both.
+   **Green on the CI emulators (API 26 and 35) 2026-10-04**, which is also
+   where the shaders are proven to compile and the seven passes to draw.
    **On a phone (to be done by the user, with the CI artifact `app-debug`):**
    - the picture moves with the sound: it breathes with the loudness, flares
      and sprouts on a bell, and takes its colours from the point;

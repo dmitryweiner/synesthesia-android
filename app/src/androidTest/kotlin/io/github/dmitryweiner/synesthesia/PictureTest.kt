@@ -190,8 +190,15 @@ class PictureTest {
 
         val agreement = meanDifference(gpu, cpu)
         val control = meanDifference(unrelated, cpu)
-        assertTrue("two pictures of the same field: $agreement apart, two of different ones: $control", control > 4 * agreement)
-        assertTrue("and they agree closely: $agreement", agreement < 24.0)
+        assertTrue(
+            "two pictures of the same field: $agreement apart, two of different ones: $control",
+            control > 4 * agreement,
+        )
+        // A bound, not a measurement: the two cannot be identical (half
+        // floats on the GPU, f32 in the core), and this is what they have to
+        // stay inside of. The mirrored comparison this test first made read
+        // 13.8, and two different fields read 15.4.
+        assertTrue("and they agree to within $AGREEMENT of 255: $agreement", agreement < AGREEMENT)
     }
 
     /** Steps and draws `steps` frames, and reads back the last one. */
@@ -270,5 +277,8 @@ class PictureTest {
 
     private companion object {
         const val SIDE = 128
+
+        /** The most the GPU's picture may differ from the core's, per channel. */
+        const val AGREEMENT = 8.0
     }
 }

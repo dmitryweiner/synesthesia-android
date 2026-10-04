@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
 fun DetailsSheet(controller: PlaybackController, view: SessionView, onDismiss: () -> Unit) {
     val lines = remember(view) { describe(controller) }
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("details")) {
-        LazyColumn(Modifier.heightIn(max = 560.dp).padding(horizontal = 16.dp)) {
+        LazyColumn(Modifier.heightIn(max = 560.dp).padding(horizontal = 16.dp).testTag("detailsList")) {
             item {
                 Text(view.name, style = MaterialTheme.typography.titleMedium)
                 Text(

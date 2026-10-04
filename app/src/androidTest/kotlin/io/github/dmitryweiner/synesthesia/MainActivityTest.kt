@@ -2,6 +2,8 @@ package io.github.dmitryweiner.synesthesia
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -94,9 +96,11 @@ class MainActivityTest {
         compose.onNodeWithTag("openDetails").performClick()
         // The half of the status the main screen does not show.
         compose.onNodeWithTag("changed").assertIsDisplayed()
-        compose.onNodeWithText("What is switched on").assertExists()
-        // The point's parts, as the schema names them.
-        compose.onNodeWithText("Filter", substring = true).assertExists()
+        // The rest is below the fold of a sheet, so it is scrolled to rather
+        // than assumed composed. Which sections are listed depends on what
+        // the press left switched on, so the heading is what is asserted.
+        compose.onNodeWithTag("detailsList").performScrollToNode(hasText("What is switched on"))
+        compose.onNodeWithText("What is switched on").assertIsDisplayed()
     }
 
     @Test
@@ -165,13 +169,14 @@ class MainActivityTest {
 
     @Test
     fun aPressDoesNotMoveWhatIsAboveIt() {
-        // The status line is two lines whatever it says: when it grew, the
-        // picture was pushed up and down on every press.
-        val before = compose.onNodeWithTag("status").fetchSemanticsNode().size
+        // The status line keeps its height whatever it says — the text is as
+        // wide as its words, which is fine; it is the height that pushed the
+        // picture up and down on every press.
+        val line = compose.onNodeWithTag("status").fetchSemanticsNode().size.height
         val picture = compose.onNodeWithTag("picture").fetchSemanticsNode().size
         compose.onNodeWithTag("like").performClick()
         compose.onNodeWithTag("surprise").performClick()
-        assertEquals(before, compose.onNodeWithTag("status").fetchSemanticsNode().size)
+        assertEquals(line, compose.onNodeWithTag("status").fetchSemanticsNode().size.height)
         assertEquals(picture, compose.onNodeWithTag("picture").fetchSemanticsNode().size)
     }
 

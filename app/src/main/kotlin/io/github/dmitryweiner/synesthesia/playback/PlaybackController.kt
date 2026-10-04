@@ -18,6 +18,7 @@ import io.github.dmitryweiner.synesthesia.core.AudioFrame
 import io.github.dmitryweiner.synesthesia.core.CoreException
 import io.github.dmitryweiner.synesthesia.core.LinkPoint
 import io.github.dmitryweiner.synesthesia.core.PictureDriver
+import io.github.dmitryweiner.synesthesia.core.PointEdit
 import io.github.dmitryweiner.synesthesia.core.PointList
 import io.github.dmitryweiner.synesthesia.core.PresetInfo
 import io.github.dmitryweiner.synesthesia.core.Session
@@ -67,6 +68,8 @@ class PlaybackController(
         val pausedForFocus: Boolean = false,
         /** What the core's session says about itself: name, step, status, undo. */
         val session: SessionView,
+        /** ⚙ Settings is open: the picture stops while it is. */
+        val settingsOpen: Boolean = false,
         /** Something the user should know, e.g. why the sound stopped. */
         val message: String? = null,
     ) {
@@ -134,6 +137,17 @@ class PlaybackController(
     private var stopping: AudioOutput? = null
     private val launchRunnable = Runnable { launchOutput() }
     private val tickRunnable = Runnable { tick() }
+
+    /** The point ⚙ Settings is editing, while it is open. */
+    private var editing: PointEdit? = null
+    private var lastEditPush = Double.NEGATIVE_INFINITY
+    private val editPushRunnable = Runnable {
+        editing?.let { edit ->
+            lastEditPush = now()
+            player?.setPoint(edit.pointJson())
+            picture.setPoint(edit.pointJson())
+        }
+    }
 
     private val wakeLock = context.getSystemService(PowerManager::class.java)
         .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "synesthesia:playback")
@@ -283,6 +297,57 @@ class PlaybackController(
 
     /** Any thread: the GL thread takes this on its next frame. */
     override fun takeReseed(): Boolean = reseedPending.getAndSet(false)
+
+    // --- ⚙ Settings --------------------------------------------------------
+
+    /**
+     * ⚙ Settings opens: a morph in flight lands (the page edits the point it
+     * was heading to), the scout stops, and the picture stops with it — the
+     * web app pauses it so the result is seen on closing, and a phone has the
+     * cores to spare for the sound instead.
+     *
+     * The page edits the returned [PointEdit]; [settingsEdited] is what makes
+     * an edit audible.
+     */
+    fun openSettings(): PointEdit {
+        applyEffects(session.openSettings(now()))
+        _state.update { it.copy(settingsOpen = true) }
+        val edit = PointEdit(session.pointJson())
+        editing = edit
+        return edit
+    }
+
+    /**
+     * The page changed something. The point goes to the sound at most as
+     * often as a morph pushes: a finger on a slider fires far more often than
+     * the engine needs, and the last value always arrives (the tick that
+     * follows carries it).
+     */
+    fun settingsEdited() {
+        val edit = editing ?: return
+        val now = now()
+        if (now - lastEditPush >= PUSH_SECONDS) {
+            lastEditPush = now
+            player?.setPoint(edit.pointJson())
+            picture.setPoint(edit.pointJson())
+        } else {
+            main.removeCallbacks(editPushRunnable)
+            main.postDelayed(editPushRunnable, (PUSH_SECONDS * 1000).toLong())
+        }
+    }
+
+    /**
+     * ⚙ Settings closes. A change is one undoable step and a jump, not a
+     * morph: the sound was edited as it played, so it is already there.
+     * Nothing changed means nothing but a settle.
+     */
+    fun closeSettings() {
+        main.removeCallbacks(editPushRunnable)
+        val edit = editing ?: return
+        editing = null
+        applyEffects(session.closeSettings(now(), edit.pointJson()))
+        _state.update { it.copy(settingsOpen = false) }
+    }
 
     fun stats(): OutputStats? = output?.stats()
 
@@ -443,6 +508,12 @@ class PlaybackController(
          * twice as often and no more.
          */
         const val TICK_MS = 25L
+
+        /**
+         * How often an edit reaches the sound — the core's `push_interval`,
+         * which is what a morph uses.
+         */
+        const val PUSH_SECONDS = 0.05
 
         private const val TAG = "SynPlayback"
 

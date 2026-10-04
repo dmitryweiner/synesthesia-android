@@ -37,7 +37,13 @@ import io.github.dmitryweiner.synesthesia.playback.PlaybackController
  * that says what the last press did. A finger on the picture paints into it.
  */
 @Composable
-fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: () -> Unit, modifier: Modifier = Modifier) {
+fun PlayerScreen(
+    controller: PlaybackController,
+    onPlay: () -> Unit,
+    onBench: () -> Unit,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val state by controller.state.collectAsStateWithLifecycle()
     var frame by remember { mutableStateOf<AudioFrame?>(null) }
     var stats by remember { mutableStateOf<OutputStats?>(null) }
@@ -70,6 +76,7 @@ fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: ()
                 )
                 Text("core ${remember { coreVersion() }}", style = MaterialTheme.typography.labelSmall)
             }
+            TextButton(onClick = onSettings, modifier = Modifier.testTag("openSettings")) { Text("⚙") }
             TextButton(onClick = { naming = true }, modifier = Modifier.testTag("keepPoint")) { Text("💾") }
             TextButton(onClick = { pointsOpen = true }, modifier = Modifier.testTag("openPoints")) { Text("Points") }
             TextButton(onClick = onBench, enabled = !state.playing) { Text("Bench") }
@@ -92,7 +99,7 @@ fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: ()
         }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         said?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        Picture(controller, Modifier.weight(1f).fillMaxWidth())
+        Picture(controller, Modifier.weight(1f).fillMaxWidth(), running = !state.settingsOpen)
         Meters(frame, Modifier.fillMaxWidth())
         StatsLine(stats)
         SearchBar(controller, state.session)

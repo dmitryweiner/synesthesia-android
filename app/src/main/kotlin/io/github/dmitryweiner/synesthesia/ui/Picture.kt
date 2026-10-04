@@ -32,7 +32,7 @@ import io.github.dmitryweiner.synesthesia.gl.PictureView
  * audio clock, so the picture rejoins in step (PLAN.md decision 10).
  */
 @Composable
-fun Picture(source: PictureSource, modifier: Modifier = Modifier) {
+fun Picture(source: PictureSource, modifier: Modifier = Modifier, running: Boolean = true) {
     var missingFloatTargets by remember { mutableStateOf(false) }
     val held = remember { HeldView() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -67,7 +67,7 @@ fun Picture(source: PictureSource, modifier: Modifier = Modifier) {
         // Activity: a picture nobody is looking at still costs a GPU.
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> held.view?.onResume()
+                Lifecycle.Event.ON_RESUME -> if (held.running) held.view?.onResume()
                 Lifecycle.Event.ON_PAUSE -> held.view?.onPause()
                 else -> Unit
             }
@@ -78,9 +78,21 @@ fun Picture(source: PictureSource, modifier: Modifier = Modifier) {
             held.view?.onPause()
         }
     }
+
+    // ⚙ Settings pauses it, as the web app's loop pauses: the picture shows
+    // the result when the page closes, and the cores go to the sound while
+    // it is open.
+    DisposableEffect(held, running) {
+        held.running = running
+        if (running) held.view?.onResume() else held.view?.onPause()
+        onDispose { }
+    }
 }
 
 /** The view the lifecycle observer parks and wakes, without making it state. */
 private class HeldView {
     var view: PictureView? = null
+
+    /** False while ⚙ Settings is open. */
+    var running: Boolean = true
 }

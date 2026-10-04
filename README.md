@@ -24,7 +24,9 @@ on screen** as of phase 3: the web app's own seven shaders on OpenGL ES 3.0,
 driven by the sound that is being heard, and a finger paints into it. Points
 are kept under the names you give them and come back on the next start
 (phase 4), and a point travels to and from the web app as a `#s=` token or a
-link — locally, with no account and no network.
+link — locally, with no account and no network. ⚙ Settings (phase 5) shows
+every one of the point's parameters, on a page the core generates from the
+schema: when the model grows a parameter, the page grows with it.
 
 ## Trying it on a phone
 

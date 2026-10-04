@@ -92,7 +92,8 @@ app/                  the application (Compose)
                       atomically off the main thread
   ui/                 PlayerScreen (the picture, the presses, the status),
                       Picture (the view in Compose), Points (the sheet, 💾,
-                      the token), Meters, BenchScreen
+                      the token), SettingsScreen (generated from the schema),
+                      Meters, BenchScreen
   bench/              Bench: offline render speed per preset
 app/debug.keystore    the shared debug key; never replace it
 scripts/              check.sh, setup-android-sdk.sh, sync-shaders.sh,

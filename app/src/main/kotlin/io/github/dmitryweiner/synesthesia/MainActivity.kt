@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
 import io.github.dmitryweiner.synesthesia.ui.BenchScreen
 import io.github.dmitryweiner.synesthesia.ui.PlayerScreen
+import io.github.dmitryweiner.synesthesia.ui.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 var bench by rememberSaveable { mutableStateOf(false) }
+                var settings by rememberSaveable { mutableStateOf(false) }
                 // Android 13+ asks before showing the playback notification.
                 // The sound plays whatever the answer: it is asked once, on
                 // the first ▶.
@@ -61,11 +63,28 @@ class MainActivity : ComponentActivity() {
                             fromLink = null
                         }
                     }
-                    if (bench) {
-                        BackHandler { bench = false }
-                        BenchScreen(controller.sampleRate, onBack = { bench = false }, Modifier.padding(padding))
-                    } else {
-                        PlayerScreen(controller, onPlay = play, onBench = { bench = true }, Modifier.padding(padding))
+                    val closeSettings = {
+                        controller.closeSettings()
+                        settings = false
+                    }
+                    when {
+                        bench -> {
+                            BackHandler { bench = false }
+                            BenchScreen(controller.sampleRate, onBack = { bench = false }, Modifier.padding(padding))
+                        }
+                        settings -> {
+                            // Back closes the page the same way Done does:
+                            // one undoable step, or nothing at all.
+                            BackHandler(onBack = closeSettings)
+                            SettingsScreen(controller, onClose = closeSettings, Modifier.padding(padding))
+                        }
+                        else -> PlayerScreen(
+                            controller,
+                            onPlay = play,
+                            onBench = { bench = true },
+                            onSettings = { settings = true },
+                            Modifier.padding(padding),
+                        )
                     }
                 }
             }

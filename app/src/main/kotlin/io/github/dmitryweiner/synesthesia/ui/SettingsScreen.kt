@@ -1,0 +1,257 @@
+package io.github.dmitryweiner.synesthesia.ui
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import io.github.dmitryweiner.synesthesia.core.Control
+import io.github.dmitryweiner.synesthesia.core.ControlKind
+import io.github.dmitryweiner.synesthesia.core.PointEdit
+import io.github.dmitryweiner.synesthesia.core.Section
+import io.github.dmitryweiner.synesthesia.core.SettingsTab
+import io.github.dmitryweiner.synesthesia.core.settingsPage
+import io.github.dmitryweiner.synesthesia.playback.PlaybackController
+import kotlin.math.ln
+import kotlin.math.pow
+import kotlin.math.roundToInt
+
+/**
+ * ⚙ Settings (PLAN.md phase 5): every parameter of the point, on two tabs.
+ *
+ * Nothing here knows what the parameters are. The page is whatever the core
+ * derives from the schema — sections, labels, ranges, steps, options, and
+ * which switch gates what — so when the web app grows a parameter it appears
+ * here on its own (the tanpura's Jawari and the delay's Shimmer did).
+ *
+ * An edit is heard as it is made: the point goes to the sound as the finger
+ * moves, no more often than a morph pushes. The picture stops while the page
+ * is open, as the web app's does, so it shows the result on closing. Closing
+ * is one undoable step — a jump, not a morph, because the sound is already
+ * there.
+ */
+@Composable
+fun SettingsScreen(controller: PlaybackController, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    val edit = remember { controller.openSettings() }
+    val page = remember { settingsPage() }
+    var tab by remember { mutableIntStateOf(0) }
+    val tabs = listOf(SettingsTab.SOUND to "Sound", SettingsTab.PICTURE to "Picture")
+
+    Column(modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Settings", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+            TextButton(onClick = onClose, modifier = Modifier.testTag("closeSettings")) { Text("Done") }
+        }
+        PrimaryTabRow(selectedTabIndex = tab) {
+            tabs.forEachIndexed { i, (_, title) ->
+                Tab(selected = tab == i, onClick = { tab = i }, text = { Text(title) }, modifier = Modifier.testTag("tab$title"))
+            }
+        }
+        val shown = page.filter { it.tab == tabs[tab].first }
+        LazyColumn(Modifier.fillMaxSize().testTag("settingsList")) {
+            if (tab == 0) {
+                item { Volume(edit, controller) }
+            }
+            items(shown, key = { it.id }) { section ->
+                SectionBlock(section, edit, controller)
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+/** The master gain: not a gene, so it sits above the generated sections. */
+@Composable
+private fun Volume(edit: PointEdit, controller: PlaybackController) {
+    var value by remember { mutableStateOf(edit.masterGain().toFloat()) }
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text("Volume · %.2f".format(value), style = MaterialTheme.typography.labelLarge)
+        Slider(
+            value = value,
+            onValueChange = {
+                value = it
+                edit.setMasterGain(it.toDouble())
+                controller.settingsEdited()
+            },
+            valueRange = 0f..1f,
+            modifier = Modifier.testTag("volume"),
+        )
+    }
+}
+
+@Composable
+private fun SectionBlock(section: Section, edit: PointEdit, controller: PlaybackController) {
+    // Sections start closed: there are forty of them, and a point has 250
+    // parameters.
+    var open by remember(section.id) { mutableStateOf(false) }
+    val toggle = section.toggle
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            Modifier.fillMaxWidth().clickable { open = !open }.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "${if (open) "▾" else "▸"}  ${section.title}",
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (toggle != null) {
+                SwitchControl(toggle, edit, controller)
+            }
+        }
+        if (open) {
+            for (control in section.controls) {
+                ControlRow(control, edit, controller)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ControlRow(control: Control, edit: PointEdit, controller: PlaybackController) {
+    // A control whose switch is off keeps its value and does nothing, so it
+    // is shown dimmed rather than hidden (the core says which).
+    val active = control.activeIf == null || edit.isActive(control.id)
+    Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, bottom = 4.dp)) {
+        when (control.kind) {
+            ControlKind.SWITCH -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(control.shortLabel, Modifier.weight(1f), style = label(active))
+                SwitchControl(control, edit, controller)
+            }
+            ControlKind.CHOICE -> ChoiceControl(control, edit, controller, active)
+            ControlKind.SLIDER -> SliderControl(control, edit, controller, active)
+        }
+    }
+}
+
+@Composable
+private fun label(active: Boolean) = MaterialTheme.typography.bodySmall.copy(
+    color = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
+)
+
+@Composable
+private fun SwitchControl(control: Control, edit: PointEdit, controller: PlaybackController) {
+    var on by remember(control.id) { mutableStateOf(edit.value(control.id) >= 0.5) }
+    Switch(
+        checked = on,
+        onCheckedChange = {
+            on = it
+            edit.setValue(control.id, if (it) 1.0 else 0.0)
+            controller.settingsEdited()
+        },
+        modifier = Modifier.testTag(control.id),
+    )
+}
+
+@Composable
+private fun ChoiceControl(control: Control, edit: PointEdit, controller: PlaybackController, active: Boolean) {
+    var index by remember(control.id) { mutableIntStateOf(edit.value(control.id).roundToInt()) }
+    var open by remember(control.id) { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(control.shortLabel, Modifier.weight(1f), style = label(active))
+        TextButton(onClick = { open = true }, modifier = Modifier.testTag(control.id)) {
+            Text(control.options.getOrElse(index) { "$index" }, maxLines = 1)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            control.options.forEachIndexed { i, option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        index = i
+                        edit.setValue(control.id, i.toDouble())
+                        controller.settingsEdited()
+                        open = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SliderControl(control: Control, edit: PointEdit, controller: PlaybackController, active: Boolean) {
+    // A frequency-like control moves in octaves, as the schema says and as a
+    // route's depth does: the slider is log, the value is not.
+    val scale = remember(control.id) { Scale(control) }
+    var position by remember(control.id) { mutableStateOf(scale.toSlider(edit.value(control.id))) }
+    val value = scale.toValue(position)
+    Column {
+        Text("${control.shortLabel} · ${format(value)}", style = label(active))
+        Slider(
+            value = position,
+            onValueChange = {
+                position = it
+                edit.setValue(control.id, scale.toValue(it))
+                controller.settingsEdited()
+            },
+            steps = scale.steps,
+            modifier = Modifier.testTag(control.id),
+        )
+    }
+}
+
+/** 0..1 on the slider ↔ the control's own units, logarithmic where the schema says. */
+private class Scale(private val control: Control) {
+    private val log = control.exp && control.min > 0.0 && control.max > control.min
+
+    /** Notches, for a step the schema gives on a short range. */
+    val steps: Int = if (!log && control.step > 0.0) {
+        (((control.max - control.min) / control.step).roundToInt() - 1).coerceIn(0, 100)
+    } else {
+        0
+    }
+
+    fun toSlider(value: Double): Float {
+        val v = value.coerceIn(control.min, control.max)
+        val t = if (log) {
+            ln(v / control.min) / ln(control.max / control.min)
+        } else {
+            (v - control.min) / (control.max - control.min)
+        }
+        return t.coerceIn(0.0, 1.0).toFloat()
+    }
+
+    fun toValue(position: Float): Double {
+        val t = position.coerceIn(0f, 1f).toDouble()
+        return if (log) {
+            control.min * (control.max / control.min).pow(t)
+        } else {
+            control.min + (control.max - control.min) * t
+        }
+    }
+}
+
+/** Enough digits to see a change, not more. */
+private fun format(v: Double): String = when {
+    v == 0.0 -> "0"
+    kotlin.math.abs(v) >= 100 -> "%.0f".format(v)
+    kotlin.math.abs(v) >= 1 -> "%.2f".format(v)
+    else -> "%.4f".format(v)
+}

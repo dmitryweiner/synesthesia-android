@@ -8,9 +8,13 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeRight
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -67,6 +71,37 @@ class MainActivityTest {
         compose.onAllNodesWithTag("forget").onFirst().performClick()
         compose.onNodeWithTag("forgetConfirm").performClick()
         assertEquals(before, playback.points.count())
+    }
+
+    @Test
+    fun settingsEditAPointAndClosingIsOneUndoableStep() {
+        val playback = (compose.activity.application as SynesthesiaApp).playback
+
+        compose.onNodeWithTag("openSettings").performClick()
+        compose.onNodeWithText("Settings").assertExists()
+        // The page is generated: the tabs and the sections come from the
+        // schema, and so does every control in them.
+        compose.onNodeWithTag("tabSound").assertExists()
+        compose.onNodeWithTag("tabPicture").assertExists()
+        compose.onNodeWithTag("volume").assertExists()
+        // The picture stops while the page is open (PLAN.md phase 5).
+        assertTrue(playback.state.value.settingsOpen)
+
+        // A section opens and its controls are there; one of them is the
+        // delay's shimmer, which nothing in this app was written for.
+        compose.onNodeWithTag("tabSound").performClick()
+        compose.onNodeWithText("▸  Delay").performClick()
+        compose.onNodeWithTag("fx.delayShimmer").assertExists()
+        compose.onNodeWithTag("fx.delayOn").assertExists()
+
+        // Changing something and closing is one undoable step.
+        val steps = playback.state.value.session.steps
+        compose.onNodeWithTag("fx.delayShimmer").performTouchInput { swipeRight() }
+        compose.onNodeWithTag("closeSettings").performClick()
+        assertFalse(playback.state.value.settingsOpen)
+        assertEquals(steps + 1u, playback.state.value.session.steps)
+        assertTrue(playback.state.value.session.canUndo)
+        assertTrue(playback.state.value.session.status.contains("Settings"))
     }
 
     @Test

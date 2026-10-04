@@ -22,12 +22,12 @@ in Russian — the same rule as the sibling projects.
 | 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ✅ done; listened to on a phone 2026-10-04 |
 | 3 | Picture (GLES 3.0) | ✅ done; looked at on a phone 2026-10-04 |
 | 4 | Points and tokens | ✅ built 2026-10-04; to be tried on a phone (see phase 4) |
-| 5 | Settings | ⏭ **next** |
-| 6 | Polish | — |
+| 5 | Settings | ✅ built 2026-10-04; to be tried on a phone (see phase 5) |
+| 6 | Polish | ⏭ **next** |
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`2bb7b87`); this repository, `main` (phases 0 and 1 merged on
+`9b84a40`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
 
 ## Keeping up with the web app
@@ -542,9 +542,48 @@ copied into this repository.
    **On a phone (to be done by the user):** keep a point and find it after a
    restart; copy a token, open the web app, paste it into the address bar and
    hear the same point; share a link from the web app and open it here.
-5. ⏭ **Settings (next).** The two-tab page generated from the schema; sound edits
+5. ✅ **Settings.** The two-tab page generated from the schema; sound edits
    heard as made; the picture paused while open; close = one undoable step.
-6. **Polish.** Details, help, the bench numbers written into this file, and
+   **Built 2026-10-04:**
+   - Core: `syn_core::settings` — the page, derived from the schema. Every
+     parameter the page can change is a gene (the genome is exactly "what
+     evolution may touch"), so a control *is* a gene definition: it already
+     carries the label, the range, the step, the log scale and the switch that
+     gates it. What the module adds is the arrangement — which section a gene
+     belongs to, what that section is called, what a choice's options are
+     called — and **no label is written by hand**: an FX module is titled by
+     its own on-switch, a formula by its enable gene, a route by `route.N.on`,
+     a card by its title; only the LFOs are numbered from their group id,
+     because the schema names no LFO as a whole. A host test asserts that
+     every one of the 250 genes is on the page exactly once, so a parameter the
+     web app adds appears here on its own — the tanpura's Jawari and the
+     delay's Shimmer already did.
+   - Core: `settings::Edit`, the point being edited — a genome plus the
+     volume and the name, which are not genes. Nothing is repaired on the way
+     out: no formula at all, or a coupling below the floor, is what the user
+     chose, and the next 👍/👎 repairs as usual.
+   - Through the FFI: `settings_page()` and `PointEdit`.
+   - The screen: two tabs, sections closed by default (there are forty of
+     them), sliders logarithmic where the schema says, choices as menus, and a
+     control whose switch is off shown dimmed rather than hidden — the value
+     is still there, it simply does nothing.
+   - Heard as made: the edited point goes to the sound and the picture at most
+     every 50 ms (the core's `push_interval`, which is what a morph uses), and
+     the last value always arrives.
+   - The picture stops while the page is open, as the web app's loop does, so
+     it shows the result on closing — and the cores go to the sound instead.
+   - Closing (Done or Back) is one undoable step and a jump, not a morph: the
+     sound was edited as it played, so it is already there. Nothing changed is
+     no step at all.
+   - Tests: 10 more host tests in the core and 6 JVM through the real
+     bindings; on a device: the page opens with both tabs, a section opens and
+     its controls are there (the delay's shimmer among them, which nothing in
+     the app was written for), the picture stops, and an edit closes as one
+     undoable step.
+   **On a phone (to be done by the user):** that a slider is heard while the
+   finger moves, that the picture picks up the change when the page closes,
+   and that ↩ takes a whole page of edits back in one press.
+6. ⏭ **Polish (next).** Details, help, the bench numbers written into this file, and
    **the small UI fixes the user has been collecting while using the app**
    (agreed 2026-10-04: they wait for the main phases to land, so that they
    are made once, against the finished screens). The wake lock while the

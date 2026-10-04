@@ -20,8 +20,8 @@ in Russian — the same rule as the sibling projects.
 | 0 | Scaffold: core repo, Gradle + cargo-ndk + UniFFI | ✅ done 2026-10-03, runs on a phone |
 | 1 | Sound, in the background | ✅ done 2026-10-03, plays on a phone with the screen off; numbers still to take (see phase 1) |
 | 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ✅ done; listened to on a phone 2026-10-04 |
-| 3 | Picture (GLES 3.0) | ✅ built 2026-10-04; to be looked at on a phone (see phase 3) |
-| 4 | Points and tokens | — |
+| 3 | Picture (GLES 3.0) | ✅ done; looked at on a phone 2026-10-04 |
+| 4 | Points and tokens | ⏭ **next** |
 | 5 | Settings | — |
 | 6 | Polish | — |
 | 7 | iOS readiness (optional) | — |
@@ -456,7 +456,8 @@ copied into this repository.
    put in both.
    **Green on the CI emulators (API 26 and 35) 2026-10-04**, which is also
    where the shaders are proven to compile and the seven passes to draw.
-   **On a phone (to be done by the user, with the CI artifact `app-debug`):**
+   **On a real phone (2026-10-04, by the user): the graphics work.** What is
+   left to look at there, in a quieter moment:
    - the picture moves with the sound: it breathes with the loudness, flares
      and sprouts on a bell, and takes its colours from the point;
    - 👍 👎 🎲 ↩ change it as they change the sound, and a load starts a new
@@ -468,14 +469,17 @@ copied into this repository.
    - the numbers (decision 12): the frame rate it settles at and which rung
      it picks, and whether `core %` or underruns move once the picture is
      running (the second half of the crackle report from phase 2).
-4. **Points and tokens.** Last point restored; 💾 with a name; *My points*;
+4. ⏭ **Points and tokens (next).** Last point restored; 💾 with a name; *My points*;
    export a `#s=` token, import one from the clipboard or an opened link.
    The points list model (decision 2) moves into `syn-session` here, with the
    storage it needs: phase 2 emits `SaveLastPoint` and nothing listens yet.
 5. **Settings.** The two-tab page generated from the schema; sound edits
    heard as made; the picture paused while open; close = one undoable step.
-6. **Polish.** Details, help, wake lock while the picture shows, the bench
-   numbers written into this file.
+6. **Polish.** Details, help, the bench numbers written into this file, and
+   **the small UI fixes the user has been collecting while using the app**
+   (agreed 2026-10-04: they wait for the main phases to land, so that they
+   are made once, against the finished screens). The wake lock while the
+   picture shows arrived early, in phase 3.
 7. **iOS readiness (optional, small).** Build `syn-ffi` as an XCFramework
    with Swift bindings and call it from a one-file Swift test — proves the
    architecture before the Swift app exists.

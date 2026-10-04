@@ -62,7 +62,8 @@ class MainActivityTest {
         // It is in the sheet, under "My points", and opens from there. The
         // rows carry a tag: the kept name is on the title too, and the two
         // Forget buttons — the row's and the dialog's — say the same word.
-        compose.onNodeWithTag("openPoints").performClick()
+        // The header's own button, which the review asked to have back.
+        compose.onNodeWithTag("points").performClick()
         compose.onNodeWithText("My points").assertExists()
         compose.onAllNodesWithTag("keptPoint").onFirst().performClick()
         compose.onAllNodesWithText(kept).onFirst().assertExists()
@@ -75,27 +76,38 @@ class MainActivityTest {
     }
 
     @Test
-    fun oneButtonCyclesThePictureTheFullScreenAndTheSpectrum() {
-        // The console's three modes, in the console's order.
-        compose.onNodeWithTag("viewMode").assertTextEquals("Picture")
+    fun theSwitchUnderTheBlockSwapsThePictureAndTheSpectrum() {
+        // It offers the other one, which is what a switch should say.
+        compose.onNodeWithTag("viewMode").assertTextEquals("Spectrum")
         compose.onNodeWithTag("picture").assertExists()
 
         compose.onNodeWithTag("viewMode").performClick()
-        compose.onNodeWithTag("viewMode").assertTextEquals("Full")
-        // Full screen: the picture is all there is, and the presses stay.
+        compose.onNodeWithTag("viewMode").assertTextEquals("Picture")
+        // The spectrum takes the picture's place rather than sharing it.
+        compose.onNodeWithTag("picture").assertDoesNotExist()
+
+        compose.onNodeWithTag("viewMode").performClick()
+        compose.onNodeWithTag("picture").assertExists()
+    }
+
+    @Test
+    fun fullScreenKeepsThePressesAndComesBackWhereItCameFrom() {
+        // From the spectrum, so that Close has somewhere of its own to return.
+        compose.onNodeWithTag("viewMode").performClick()
+        compose.onNodeWithTag("picture").assertDoesNotExist()
+
+        compose.onNodeWithTag("fullScreen").performClick()
+        // The picture is all there is, and the presses stay with it.
         compose.onNodeWithTag("picture").assertExists()
         compose.onNodeWithTag("like").assertIsDisplayed()
         compose.onNodeWithTag("play").assertDoesNotExist()
+        compose.onNodeWithTag("points").assertDoesNotExist()
 
-        compose.onNodeWithTag("viewMode").performClick()
-        compose.onNodeWithTag("viewMode").assertTextEquals("Spectrum")
-        // The spectrum takes the picture's place rather than sharing it.
+        compose.onNodeWithTag("closeFull").performClick()
+        // Back to the spectrum, not to whatever is first.
         compose.onNodeWithTag("picture").assertDoesNotExist()
         compose.onNodeWithTag("play").assertIsDisplayed()
-
         compose.onNodeWithTag("viewMode").performClick()
-        compose.onNodeWithTag("viewMode").assertTextEquals("Picture")
-        compose.onNodeWithTag("picture").assertExists()
     }
 
     @Test

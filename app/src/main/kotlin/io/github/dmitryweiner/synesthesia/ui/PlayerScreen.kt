@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -42,25 +43,30 @@ import io.github.dmitryweiner.synesthesia.core.coreVersion
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
 
 /**
- * What fills the screen, cycled by one button — the console's three modes in
- * the same order (`VizMode` in synesthesia-rust), so the two apps feel the
- * same: the spectrum, the picture in its place, or the picture over
- * everything. The spectrum and the picture share the space because together
- * they fight: the bars read as part of the image.
+ * What fills the screen — the console's three (`VizMode` in
+ * synesthesia-rust), so the two apps feel the same: the picture, the spectrum
+ * in its place, or the picture over everything. The spectrum and the picture
+ * share the space because together they fight: the bars read as part of the
+ * image.
+ *
+ * The console cycles all three with one key, which is a terminal's way. Here
+ * the switch sits under the block it changes and swaps the two that share it,
+ * and full screen is its own button and its own way out — one control, one
+ * thing, and all three reachable from any of them.
  */
 enum class ViewMode {
-    Spectrum,
     Picture,
+    Spectrum,
     Full,
     ;
 
-    fun next(): ViewMode = entries[(ordinal + 1) % entries.size]
+    /** The other of the two that share the block. */
+    fun other(): ViewMode = if (this == Spectrum) Picture else Spectrum
 
-    /** What the button says it is showing now. */
     val label: String
         get() = when (this) {
-            Spectrum -> "Spectrum"
             Picture -> "Picture"
+            Spectrum -> "Spectrum"
             Full -> "Full"
         }
 }
@@ -85,6 +91,8 @@ fun PlayerScreen(
     var frame by remember { mutableStateOf<AudioFrame?>(null) }
     var stats by remember { mutableStateOf<OutputStats?>(null) }
     var view by rememberSaveable { mutableStateOf(ViewMode.Picture) }
+    // What full screen goes back to, so Close returns where it came from.
+    var beforeFull by rememberSaveable { mutableStateOf(ViewMode.Picture) }
     var pointsOpen by rememberSaveable { mutableStateOf(false) }
     var naming by rememberSaveable { mutableStateOf(false) }
     var said by remember { mutableStateOf<String?>(null) }
@@ -105,20 +113,27 @@ fun PlayerScreen(
         }
     }
 
-    val cycle = {
-        view = view.next()
+    val swap = {
+        view = view.other()
         said = "Showing the ${view.label.lowercase()}"
+    }
+    val enterFull = {
+        beforeFull = view
+        view = ViewMode.Full
+        said = null
+    }
+    val leaveFull = {
+        view = beforeFull
+        said = null
     }
 
     if (view == ViewMode.Full) {
-        FullPicture(controller, state, onLeave = cycle)
+        FullPicture(controller, state, onClose = leaveFull)
     } else {
         Column(modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Header(
                 state = state,
-                view = view,
                 onPoints = { pointsOpen = true },
-                onCycleView = cycle,
                 onSettings = onSettings,
                 onKeep = { naming = true },
                 onBench = onBench,
@@ -152,7 +167,14 @@ fun PlayerScreen(
             } else {
                 Spectrogram(frame, Modifier.weight(1f).fillMaxWidth())
             }
-            StatsLine(stats)
+            // The switch belongs to the block above it, not to the header.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { StatsLine(stats) }
+                TextButton(onClick = swap, modifier = Modifier.testTag("viewMode")) {
+                    Text(view.other().label)
+                }
+                TextButton(onClick = enterFull, modifier = Modifier.testTag("fullScreen")) { Text("⤢") }
+            }
             SearchBar(controller, state.session)
             StatusLine(state.session, remember { controller.scoutThreads() })
         }
@@ -173,9 +195,7 @@ fun PlayerScreen(
 @Composable
 private fun Header(
     state: PlaybackController.State,
-    view: ViewMode,
     onPoints: () -> Unit,
-    onCycleView: () -> Unit,
     onSettings: () -> Unit,
     onKeep: () -> Unit,
     onBench: () -> Unit,
@@ -197,7 +217,7 @@ private fun Header(
                 style = MaterialTheme.typography.labelSmall,
             )
         }
-        TextButton(onClick = onCycleView, modifier = Modifier.testTag("viewMode")) { Text(view.label) }
+        TextButton(onClick = onPoints, modifier = Modifier.testTag("points")) { Text("Points") }
         TextButton(onClick = onSettings, modifier = Modifier.testTag("openSettings")) { Text("⚙") }
         TextButton(onClick = onKeep, modifier = Modifier.testTag("keepPoint")) { Text("💾") }
         MoreMenu(controller, playing = state.playing, onBench = onBench, onSaid = onSaid)
@@ -276,19 +296,27 @@ private fun MoreMenu(
 
 private const val CLIP_LABEL = "Synesthesia point"
 
-/** The picture over everything, with the presses still at hand. */
+/**
+ * The picture over everything, with the presses still at hand.
+ *
+ * The picture itself runs edge to edge — under the status bar and the
+ * navigation bar, which is the point of full screen — but nothing one has to
+ * read or press does: the controls keep out of the system bars' way, where
+ * they were being cut in half.
+ */
 @Composable
-private fun FullPicture(controller: PlaybackController, state: PlaybackController.State, onLeave: () -> Unit) {
+private fun FullPicture(controller: PlaybackController, state: PlaybackController.State, onClose: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Picture(controller, Modifier.fillMaxSize(), running = !state.settingsOpen)
         TextButton(
-            onClick = onLeave,
-            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).testTag("viewMode"),
-        ) { Text(ViewMode.Full.label) }
+            onClick = onClose,
+            modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(8.dp).testTag("closeFull"),
+        ) { Text("✕ Close") }
         Column(
             Modifier.align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                .safeDrawingPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {

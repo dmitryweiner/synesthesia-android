@@ -19,18 +19,17 @@ import androidx.compose.ui.unit.dp
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
 
-/** The features the picture will listen to, drawn plainly (phase 1's stand-in for the picture). */
+/**
+ * What the sound is doing, as a strip under the picture. Phase 1 drew every
+ * feature as its own bar because there was no picture yet to show them in;
+ * the picture does that now (loudness breathes the exposure, an onset flares
+ * and seeds, the bands tint the tones), so what is left here is the spectrum,
+ * which the picture does not show, and the numbers.
+ */
 @Composable
 fun Meters(frame: AudioFrame?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Spectrum(frame?.spectrum, Modifier.fillMaxWidth().height(72.dp))
-        Bar("loud", frame?.loudness ?: 0.0)
-        Bar("bright", frame?.brightness ?: 0.0)
-        Bar("low", frame?.low ?: 0.0)
-        Bar("mid", frame?.mid ?: 0.0)
-        Bar("high", frame?.high ?: 0.0)
-        Bar("onset", frame?.onset ?: 0.0)
-        CenteredBar("swell", frame?.swell ?: 0.0)
+        Spectrum(frame?.spectrum, Modifier.fillMaxWidth().height(40.dp))
         val f = frame
         Text(
             if (f == null) "—" else "hits ${f.hits} · peak %.3f · limiter %.1f dB · t %.1f s".format(f.peak, f.limiterDb, f.time),
@@ -51,34 +50,6 @@ fun StatsLine(stats: OutputStats?) {
         },
         style = MaterialTheme.typography.bodySmall,
     )
-}
-
-@Composable
-private fun Bar(label: String, value: Double) {
-    val color = MaterialTheme.colorScheme.primary
-    val track = MaterialTheme.colorScheme.surfaceVariant
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.width(56.dp), style = MaterialTheme.typography.labelSmall)
-        Canvas(Modifier.fillMaxWidth().height(8.dp)) {
-            drawRect(track)
-            drawRect(color, size = Size(size.width * value.coerceIn(0.0, 1.0).toFloat(), size.height))
-        }
-    }
-}
-
-@Composable
-private fun CenteredBar(label: String, value: Double) {
-    val color = MaterialTheme.colorScheme.tertiary
-    val track = MaterialTheme.colorScheme.surfaceVariant
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.width(56.dp), style = MaterialTheme.typography.labelSmall)
-        Canvas(Modifier.fillMaxWidth().height(8.dp)) {
-            drawRect(track)
-            val mid = size.width / 2
-            val w = mid * value.coerceIn(-1.0, 1.0).toFloat()
-            drawRect(color, topLeft = Offset(minOf(mid, mid + w), 0f), size = Size(kotlin.math.abs(w), size.height))
-        }
-    }
 }
 
 @Composable

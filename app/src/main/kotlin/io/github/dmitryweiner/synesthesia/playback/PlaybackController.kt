@@ -14,6 +14,7 @@ import androidx.annotation.MainThread
 import io.github.dmitryweiner.synesthesia.audio.AudioOutput
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
+import io.github.dmitryweiner.synesthesia.core.PictureDriver
 import io.github.dmitryweiner.synesthesia.core.PresetInfo
 import io.github.dmitryweiner.synesthesia.core.Session
 import io.github.dmitryweiner.synesthesia.core.SessionConfig
@@ -22,7 +23,9 @@ import io.github.dmitryweiner.synesthesia.core.SessionView
 import io.github.dmitryweiner.synesthesia.core.SoundPlayer
 import io.github.dmitryweiner.synesthesia.core.defaultSessionConfig
 import io.github.dmitryweiner.synesthesia.core.presets
+import io.github.dmitryweiner.synesthesia.gl.PictureSource
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,14 +44,15 @@ import kotlinx.coroutines.flow.update
  * an audio device, a background thread and Android's lifecycle. Every session
  * call answers with effects, and [applyEffects] is the whole of what they mean here.
  *
- * Main thread only. The audio runs on [AudioOutput]'s thread; one scout job
- * at a time runs on [scouts].
+ * Main thread only, with three exceptions, each marked: the picture's GL
+ * thread reads [soundFrame] and [takeReseed] and drives the core's
+ * [PictureDriver], and one scout job at a time runs on [scouts].
  */
 @MainThread
 class PlaybackController(
     private val context: Context,
     config: SessionConfig = defaultSessionConfig(),
-) {
+) : PictureSource {
     data class State(
         val playing: Boolean = false,
         /** Stopped by another app taking the sound for a while; resumes by itself. */
@@ -82,6 +86,18 @@ class PlaybackController(
         Session.onPreset(0u, config.copy(seed = System.nanoTime().toUInt()))
 
     /**
+     * The picture's per-frame driver (PLAN.md decision 4). It holds the point
+     * the picture is of, the ripples, the LFO clock and the quality rung; the
+     * GL thread asks it for a frame and this class keeps its point in step
+     * with the sound's.
+     */
+    override val picture: PictureDriver =
+        PictureDriver(System.nanoTime().toUInt(), session.livePointJson(), measure = true)
+
+    /** Set by a session effect, taken by the GL thread on its next frame. */
+    private val reseedPending = AtomicBoolean(false)
+
+    /**
      * The thread a scout job is handed to. The rendering itself spreads over
      * the core's own pool (`cores − 2` threads, PLAN.md decision 6); this
      * thread only waits for it, so nothing on screen ever waits.
@@ -94,8 +110,10 @@ class PlaybackController(
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val main = Handler(Looper.getMainLooper())
-    private var player: SoundPlayer? = null
-    private var output: AudioOutput? = null
+    // The GL thread reads these through soundFrame(); only this thread writes.
+    @Volatile private var player: SoundPlayer? = null
+
+    @Volatile private var output: AudioOutput? = null
     /** The run that was stopped last; it may still be fading out of the player. */
     private var stopping: AudioOutput? = null
     private val launchRunnable = Runnable { launchOutput() }
@@ -158,11 +176,23 @@ class PlaybackController(
         applyEffects(session.setPlaying(now(), false))
     }
 
-    /** What is being heard now, for the meters and (phase 3) the picture. */
-    fun frameNow(): AudioFrame? {
+    /**
+     * What is being heard now — for the meters and for the picture, which
+     * runs on the sound rather than on the render clock (the device buffers
+     * 250 ms ahead of the speaker).
+     *
+     * Any thread: the two fields it reads are volatile and written only here.
+     */
+    override fun soundFrame(): AudioFrame? {
         val out = output ?: return null
         return player?.frameAt(out.playedSeconds())
     }
+
+    /** What is being heard now. */
+    fun frameNow(): AudioFrame? = soundFrame()
+
+    /** Any thread: the GL thread takes this on its next frame. */
+    override fun takeReseed(): Boolean = reseedPending.getAndSet(false)
 
     fun stats(): OutputStats? = output?.stats()
 
@@ -192,11 +222,18 @@ class PlaybackController(
         for (effect in effects) {
             when (effect) {
                 // A morph: the parameters glide, the engine is not rebuilt.
-                is SessionEffect.SetPoint -> player?.setPoint(effect.pointJson)
+                is SessionEffect.SetPoint -> {
+                    player?.setPoint(effect.pointJson)
+                    picture.setPoint(effect.pointJson)
+                }
                 // A load: the previous point's reverb and delay tails go.
-                is SessionEffect.SwitchTo -> player?.switchTo(effect.pointJson)
-                // Phase 3: the picture starts over from a fresh seed.
-                SessionEffect.Reseed -> Unit
+                is SessionEffect.SwitchTo -> {
+                    player?.switchTo(effect.pointJson)
+                    picture.setPoint(effect.pointJson)
+                }
+                // The picture starts over from a fresh seed, on the GL thread
+                // (it is the one that can draw the spots).
+                SessionEffect.Reseed -> reseedPending.set(true)
                 // Phase 4: last-point.json in filesDir.
                 is SessionEffect.SaveLastPoint -> Unit
                 // Seconds of rendering, off this thread. A result for a point

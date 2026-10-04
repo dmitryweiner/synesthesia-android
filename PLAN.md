@@ -19,15 +19,15 @@ in Russian — the same rule as the sibling projects.
 |---|---|---|
 | 0 | Scaffold: core repo, Gradle + cargo-ndk + UniFFI | ✅ done 2026-10-03, runs on a phone |
 | 1 | Sound, in the background | ✅ done 2026-10-03, plays on a phone with the screen off; numbers still to take (see phase 1) |
-| 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ✅ built 2026-10-03; to be listened to on a phone (see phase 2) |
-| 3 | Picture (GLES 3.0) | ⏭ **next** |
+| 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ✅ done; listened to on a phone 2026-10-04 |
+| 3 | Picture (GLES 3.0) | 🔨 **in progress**: the GPU path is built 2026-10-04; the CPU fallback and the parity test are next |
 | 4 | Points and tokens | — |
 | 5 | Settings | — |
 | 6 | Polish | — |
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`5bfa187`); this repository, `main` (phases 0 and 1 merged on
+`57d7f17`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
 
 ## What the two existing ports teach
@@ -230,15 +230,17 @@ app/                  the application (Kotlin, Compose)
                          the scout's thread), PlaybackService
   src/main/.../ui        PlayerScreen, Meters, BenchScreen
   src/main/.../bench     Bench (offline render speed per preset)
-  src/main/.../gl        EGL, ping-pong targets, the seven passes  (phase 3)
+  src/main/.../gl        programs, ping-pong targets, the seven passes,
+                         the GL surface and the quality rung
   src/main/.../store     last point, points, settings, tokens      (phase 4)
-  src/main/assets/shaders/  copied verbatim from the web app       (phase 3)
+  src/main/assets/shaders/  copied verbatim from the web app
   debug.keystore      the shared debug key (debug APKs install over each other)
 scripts/
   check.sh            rustfmt + clippy on core/rust; JVM tests, lint, APK
   setup-android-sdk.sh  SDK, NDK, Rust targets, cargo-ndk, local.properties
   android-test-failures.sh  failing instrumented tests with their traces (CI)
-  sync-shaders.sh     re-copies the shaders from ../synesthesia    (phase 3)
+  sync-shaders.sh     re-copies the shaders from ../synesthesia; --check
+                      fails if a copy has drifted
 .github/workflows/check.yml  check (as scripts/check.sh) + emulator (API 26, 35)
 ```
 
@@ -388,9 +390,53 @@ copied into this repository.
      the window goes away.
    None of the three is worth acting on without that number: a guess here
    would be tuning by ear (see Don'ts).
-3. ⏭ **Picture (next).** GLES 3.0 renderer with the verbatim shaders, frame params
+3. 🔨 **Picture.** GLES 3.0 renderer with the verbatim shaders, frame params
    from the core, onset hits → growth + ripples, touch painting, quality
    probe, the CPU fallback, the GPU-vs-CPU parity test.
+   **Built 2026-10-04 (the GPU path):**
+   - Core: `sim::driver::Driver` — what each frame does, for any renderer
+     that owns its own field: an onset hit as fresh growth at a random spot
+     with a ripple from it, a finger as the same thing stamped along a stroke,
+     the point as this frame's reaction / palette / display effects, the noise
+     fields' drift, and the LFO clock that follows the sound and carries on
+     without it. The CPU `Picture` runs on it too, so there is one
+     implementation rather than one per renderer. `sim::quality` is
+     `quality.ts` ported: the six-rung ladder and the boot probe. A fresh
+     start is a value (`sim::Seed`), so the GPU and the CPU can begin from the
+     same spots.
+   - Through the FFI: `PictureDriver.frame(now, sound, aspect)` → one
+     `PictureFrame` of records named after the uniforms they fill, plus
+     `backing_store`, `sim_grid`, `field_grid`, `quality_ladder`.
+   - The shaders are the web app's, **copied** by `scripts/sync-shaders.sh`
+     (`--check` fails if a copy has drifted; `scripts/check.sh` runs it when
+     the web app is next door). They are GLSL ES 3.00 already, so they run
+     here verbatim.
+   - `app/.../gl/`: `Program` (compile, link, cached uniform locations, the
+     fullscreen triangle), `Targets` (RG16F ping-pong and the half-size field
+     targets, the 1×1 zero texture, the float-target capability check),
+     `SimRenderer` (the seven passes, and the web app's three economies: no
+     pass whose output would change nothing, the paramfield and velocity kept
+     while their inputs are unchanged, both drawn at half the grid's side),
+     `PictureView` (a `GLSurfaceView`; the surface is capped by the rung with
+     `setFixedSize` as the web caps its canvas, the grid follows the same
+     rung, the rung is measured from the real interval between frames, and a
+     finger paints).
+   - The picture runs only while the Activity is visible (the GL thread is
+     parked with the lifecycle) and keeps the screen on while it shows. The
+     sound goes on without it, and the LFO clock being the audio clock is what
+     lets the picture rejoin in step.
+   - Phase 1's feature bars are gone from the screen: they were the picture's
+     stand-in, and the picture now shows what they showed. The spectrum and
+     the cost line stay; the built-in points are a row of chips until phase 4
+     brings *My points* and its sheet.
+   - Tests: 16 more host tests in the core (the driver, the ladder) and 7 JVM
+     through the real bindings; on a device, an off-screen EGL context renders
+     the seven passes and reads the pixels back — the shaders compile, the
+     seed spots show, the pattern grows and stays a picture, another point
+     paints differently, and a finger's disc lands where the finger was.
+   **Still to do in this phase:** the CPU fallback for a device with no float
+   render targets (the screen says so instead of drawing), and the
+   GPU-vs-CPU parity test on the same seeded field.
 4. **Points and tokens.** Last point restored; 💾 with a name; *My points*;
    export a `#s=` token, import one from the clipboard or an opened link.
    The points list model (decision 2) moves into `syn-session` here, with the

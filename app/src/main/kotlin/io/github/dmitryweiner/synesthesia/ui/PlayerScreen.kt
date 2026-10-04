@@ -1,6 +1,5 @@
 package io.github.dmitryweiner.synesthesia.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,12 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,9 +35,12 @@ import io.github.dmitryweiner.synesthesia.core.coreVersion
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
 
 /**
- * Phase 2 (PLAN.md): steer the search by ear. 👍 👎 🎲 ↩ under the meters,
- * the point's name with its step count, and the status line that says what
- * the last press did — the picture those presses also paint is phase 3.
+ * The player (PLAN.md phases 1–3): the picture, the point's name with its
+ * step count, ▶, and 👍 👎 🎲 ↩ with the status line that says what the last
+ * press did. A finger on the picture paints into it.
+ *
+ * The built-in points are a row of chips for now; *My points* and the bottom
+ * sheet decision 9 describes are phase 4's, with the storage they need.
  */
 @Composable
 fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: () -> Unit, modifier: Modifier = Modifier) {
@@ -91,26 +92,31 @@ fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: ()
             )
         }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        Picture(controller, Modifier.weight(1f).fillMaxWidth())
         Meters(frame, Modifier.fillMaxWidth())
         StatsLine(stats)
         SearchBar(controller, state.session)
         StatusLine(state.session, remember { controller.scoutThreads() })
-        LazyColumn(Modifier.weight(1f)) {
-            itemsIndexed(controller.presets, key = { _, p -> p.index.toInt() }) { i, p ->
-                // A built-in point is "the one playing" only until a press
-                // makes the point the user's own.
-                val selected = state.session.steps == 0u && state.session.pointName == p.name
-                ListItem(
-                    headlineContent = { Text(p.name) },
-                    leadingContent = { Text("$i") },
-                    colors = if (selected) {
-                        ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                    } else {
-                        ListItemDefaults.colors()
-                    },
-                    modifier = Modifier.clickable { controller.select(i) },
-                )
-            }
+        Points(controller, state.session)
+    }
+}
+
+/** The built-in points, tap to load one: a fresh search and a new picture. */
+@Composable
+private fun Points(controller: PlaybackController, view: SessionView) {
+    LazyRow(
+        Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        itemsIndexed(controller.presets, key = { _, p -> p.index.toInt() }) { i, p ->
+            // A built-in point is "the one playing" only until a press makes
+            // the point the user's own.
+            val selected = view.steps == 0u && view.pointName == p.name
+            FilterChip(
+                selected = selected,
+                onClick = { controller.select(i) },
+                label = { Text(p.name, maxLines = 1) },
+            )
         }
     }
 }

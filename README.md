@@ -19,8 +19,9 @@ the screen shows what the sound is doing, and 👍 👎 🎲 ↩ steer the searc
 a press glides the sound to where it leads over about two seconds, and
 while you listen the core renders and scores candidates in the background
 so that the next press takes the best one it found. The notification
-carries 👎 ⏹ 👍, so the search runs with the phone locked. The picture is
-the next phase.
+carries 👎 ⏹ 👍, so the search runs with the phone locked. **The picture is
+on screen** as of phase 3: the web app's own seven shaders on OpenGL ES 3.0,
+driven by the sound that is being heard, and a finger paints into it.
 
 ## Trying it on a phone
 

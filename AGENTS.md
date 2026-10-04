@@ -45,7 +45,8 @@ committing here.
   `scripts/check.sh`), then bump `rev` in `core/rust/Cargo.toml` here and
   run this repo's `scripts/check.sh`. Never vendor or patch the core here.
 - **Never re-type** a range, a default, a preset or a shader: read it
-  through the core, or copy it with a script.
+  through the core, or copy it with a script (`scripts/sync-shaders.sh`,
+  whose `--check` the local `scripts/check.sh` runs).
 - **The Rust side is always built in release** — the DSP cannot play in
   real time unoptimized.
 - **Realtime discipline**: nothing allocates, locks or logs on the audio
@@ -83,10 +84,15 @@ app/                  the application (Compose)
                       noisy, the wake lock;
                       PlaybackService (foreground, MediaSession, notification
                       with 👎 ⏹/▶ 👍)
-  ui/                 PlayerScreen (the presses, the status), Meters, BenchScreen
+  gl/                 the picture: Program (shaders → passes), Targets
+                      (RG16F ping-pong), SimRenderer (the seven passes),
+                      PictureView (the GL surface, the rung, the finger)
+  ui/                 PlayerScreen (the picture, the presses, the status),
+                      Picture (the view in Compose), Meters, BenchScreen
   bench/              Bench: offline render speed per preset
 app/debug.keystore    the shared debug key; never replace it
-scripts/              check.sh, setup-android-sdk.sh, android-test-failures.sh (CI)
+scripts/              check.sh, setup-android-sdk.sh, sync-shaders.sh,
+                      android-test-failures.sh (CI)
 gradle/libs.versions.toml   every version, the NDK and the SDK levels
 .github/workflows/check.yml check + emulator (API 26, 35); the APK artifact
 ```

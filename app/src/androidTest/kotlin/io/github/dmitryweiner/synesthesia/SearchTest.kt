@@ -47,7 +47,10 @@ class SearchTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             onMain { playback.play() }
             waitFor("playing") { playback.state.value.playing }
-            Thread.sleep(600)
+            // Waited for rather than slept through: a run that has to let the
+            // last one finish with the player, on an emulator whose GL is
+            // software, takes as long as it takes.
+            waitFor("the sound to report frames", 10_000) { (frameNow() ?: 0.0) > 0.0 }
             val before = requireNotNull(frameNow()) { "the sound should be reporting frames" }
 
             onMain { playback.like() }
@@ -58,7 +61,8 @@ class SearchTest {
 
             // The controller's own ticker carries the morph to its end: this
             // is what has to keep working with no screen in front of it.
-            waitFor("the morph lands", 6000) { !playback.state.value.session.morphing }
+            waitFor("the morph lands", 10_000) { !playback.state.value.session.morphing }
+            waitFor("the sound to go on", 10_000) { (frameNow() ?: 0.0) > before }
             val after = requireNotNull(frameNow()) { "the sound should still be playing" }
             assertTrue("the sound went on through the morph: $before → $after", after > before)
             assertTrue(playback.state.value.session.name.endsWith("1 step"))
@@ -96,7 +100,7 @@ class SearchTest {
             onMain { playback.play() }
             waitFor("playing") { playback.state.value.playing }
             onMain { playback.like() }
-            waitFor("the morph lands", 6000) { !playback.state.value.session.morphing }
+            waitFor("the morph lands", 10_000) { !playback.state.value.session.morphing }
 
             onMain { playback.select(3) }
             val loaded = playback.state.value.session
@@ -104,8 +108,7 @@ class SearchTest {
             assertEquals(0u, loaded.steps)
             assertTrue("a load clears the history", !loaded.canUndo)
 
-            Thread.sleep(600)
-            assertTrue("the sound survived the switch", requireNotNull(frameNow()) > 0.0)
+            waitFor("the sound to survive the switch", 10_000) { (frameNow() ?: 0.0) > 0.0 }
             onMain { playback.stop() }
             waitFor("service out of front") { !PlaybackService.isInForeground }
         }

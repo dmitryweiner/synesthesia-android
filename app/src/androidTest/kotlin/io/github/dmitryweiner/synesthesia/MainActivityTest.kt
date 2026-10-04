@@ -2,6 +2,7 @@ package io.github.dmitryweiner.synesthesia
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
@@ -53,16 +54,18 @@ class MainActivityTest {
         // The title is the name it was kept under.
         compose.onAllNodesWithText(kept).onFirst().assertExists()
 
-        // It is in the sheet, under "My points", and opens from there.
+        // It is in the sheet, under "My points", and opens from there. The
+        // rows carry a tag: the kept name is on the title too, and the two
+        // Forget buttons — the row's and the dialog's — say the same word.
         compose.onNodeWithTag("openPoints").performClick()
         compose.onNodeWithText("My points").assertExists()
-        compose.onAllNodesWithText(kept).onFirst().performClick()
+        compose.onAllNodesWithTag("keptPoint").onFirst().performClick()
         compose.onAllNodesWithText(kept).onFirst().assertExists()
 
         // And it can be forgotten again.
         compose.onNodeWithTag("openPoints").performClick()
-        compose.onAllNodesWithText("Forget").onFirst().performClick()
-        compose.onAllNodesWithText("Forget").onFirst().performClick()
+        compose.onAllNodesWithTag("forget").onFirst().performClick()
+        compose.onNodeWithTag("forgetConfirm").performClick()
         assertEquals(before, playback.points.count())
     }
 

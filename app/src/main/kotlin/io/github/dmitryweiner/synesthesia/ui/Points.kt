@@ -75,13 +75,18 @@ fun PointsSheet(controller: PlaybackController, view: SessionView, onDismiss: ()
                     headlineContent = { Text(name) },
                     leadingContent = { Text("💾") },
                     trailingContent = {
-                        TextButton(onClick = { forgetting = i }) { Text("Forget") }
+                        TextButton(
+                            onClick = { forgetting = i },
+                            modifier = Modifier.testTag("forget"),
+                        ) { Text("Forget") }
                     },
                     colors = itemColours(view.steps == 0u && view.pointName == name),
-                    modifier = Modifier.clickable {
-                        controller.open(i)
-                        onDismiss()
-                    },
+                    modifier = Modifier
+                        .testTag("keptPoint")
+                        .clickable {
+                            controller.open(i)
+                            onDismiss()
+                        },
                 )
             }
             item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
@@ -114,10 +119,13 @@ fun PointsSheet(controller: PlaybackController, view: SessionView, onDismiss: ()
             title = { Text("Forget “$name”?") },
             text = { Text("It goes from your points. Whatever is playing keeps playing.") },
             confirmButton = {
-                TextButton(onClick = {
-                    controller.forget(index)
-                    forgetting = null
-                }) { Text("Forget") }
+                TextButton(
+                    onClick = {
+                        controller.forget(index)
+                        forgetting = null
+                    },
+                    modifier = Modifier.testTag("forgetConfirm"),
+                ) { Text("Forget") }
             },
             dismissButton = { TextButton(onClick = { forgetting = null }) { Text("Keep it") } },
         )

@@ -1,6 +1,7 @@
 package io.github.dmitryweiner.synesthesia
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -71,6 +72,41 @@ class MainActivityTest {
         compose.onAllNodesWithTag("forget").onFirst().performClick()
         compose.onNodeWithTag("forgetConfirm").performClick()
         assertEquals(before, playback.points.count())
+    }
+
+    @Test
+    fun oneButtonCyclesThePictureTheFullScreenAndTheSpectrum() {
+        // The console's three modes, in the console's order.
+        compose.onNodeWithTag("viewMode").assertTextEquals("Picture")
+        compose.onNodeWithTag("picture").assertExists()
+
+        compose.onNodeWithTag("viewMode").performClick()
+        compose.onNodeWithTag("viewMode").assertTextEquals("Full")
+        // Full screen: the picture is all there is, and the presses stay.
+        compose.onNodeWithTag("picture").assertExists()
+        compose.onNodeWithTag("like").assertIsDisplayed()
+        compose.onNodeWithTag("play").assertDoesNotExist()
+
+        compose.onNodeWithTag("viewMode").performClick()
+        compose.onNodeWithTag("viewMode").assertTextEquals("Spectrum")
+        // The spectrum takes the picture's place rather than sharing it.
+        compose.onNodeWithTag("picture").assertDoesNotExist()
+        compose.onNodeWithTag("play").assertIsDisplayed()
+
+        compose.onNodeWithTag("viewMode").performClick()
+        compose.onNodeWithTag("viewMode").assertTextEquals("Picture")
+        compose.onNodeWithTag("picture").assertExists()
+    }
+
+    @Test
+    fun theTokensAndTheBenchAreUnderTheHeadersMenu() {
+        compose.onNodeWithTag("more").performClick()
+        compose.onNodeWithTag("copyToken").assertIsDisplayed()
+        compose.onNodeWithTag("pasteToken").assertIsDisplayed()
+        // The bench says why it waits rather than greying out unexplained.
+        compose.onNodeWithTag("openBench").assertIsDisplayed()
+        compose.onNodeWithTag("copyToken").performClick()
+        compose.onNodeWithText("The point is on the clipboard, as a #s= token").assertExists()
     }
 
     @Test

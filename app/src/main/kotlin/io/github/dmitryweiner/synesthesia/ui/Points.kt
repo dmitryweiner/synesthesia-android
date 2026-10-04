@@ -1,11 +1,8 @@
 package io.github.dmitryweiner.synesthesia.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -28,7 +25,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -170,38 +166,3 @@ fun KeepDialog(controller: PlaybackController, onDismiss: () -> Unit) {
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
-
-/**
- * The token: a point as text, to paste into a browser or from one — the whole
- * of how a point travels between the apps (decision 8: no network).
- *
- * The system clipboard, not Compose's: a token is plain text that another app
- * wrote or will read, and the framework's clipboard is what those apps use.
- */
-@Composable
-fun TokenRow(controller: PlaybackController, onSaid: (String) -> Unit, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val clipboard = remember(context) { context.getSystemService(ClipboardManager::class.java) }
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(
-            onClick = {
-                clipboard.setPrimaryClip(ClipData.newPlainText(LABEL, "#s=${controller.token()}"))
-                onSaid("The point is on the clipboard, as a #s= token")
-            },
-            modifier = Modifier.testTag("copyToken"),
-        ) { Text("Copy token") }
-        TextButton(
-            onClick = {
-                val pasted = clipboard.primaryClip
-                    ?.takeIf { it.itemCount > 0 }
-                    ?.getItemAt(0)
-                    ?.coerceToText(context)
-                    ?.toString()
-                onSaid(if (pasted.isNullOrBlank()) "Nothing on the clipboard" else controller.importToken(pasted))
-            },
-            modifier = Modifier.testTag("pasteToken"),
-        ) { Text("Paste token") }
-    }
-}
-
-private const val LABEL = "Synesthesia point"

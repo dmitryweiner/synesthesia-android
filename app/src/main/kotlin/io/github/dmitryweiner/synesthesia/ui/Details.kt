@@ -98,35 +98,40 @@ private fun describe(controller: PlaybackController): List<Pair<String, String>>
     }
 }
 
-/** What the app is, in the words its own README uses. */
+/**
+ * What the app is and what the buttons do — shown from the menu, and once by
+ * itself on the first run (`welcome`).
+ *
+ * It opens with ▶ Play, which is the thing people were not finding: the app
+ * is silent until it is pressed, and everything else is about what you hear.
+ */
 @Composable
-fun HelpDialog(onDismiss: () -> Unit) {
+fun HelpDialog(onDismiss: () -> Unit, welcome: Boolean = false) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.testTag("help"),
-        title = { Text("Synesthesia") },
+        modifier = Modifier.testTag(if (welcome) "welcome" else "help"),
+        title = { Text(if (welcome) "Welcome to Synesthesia" else "Synesthesia") },
         text = {
             Column {
                 Text(
-                    "One point in a large space of parameters makes a sound and a picture together. " +
-                        "You steer the search through it:",
-                    style = MaterialTheme.typography.bodySmall,
+                    "▶ Play starts the sound — nothing is heard until you press it.",
+                    style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    "\n👍 more of this — the search carries on the way it was going." +
+                    "\nOne point in a large space of parameters makes a sound and a picture " +
+                        "together, and you steer the search through it:" +
+                        "\n\n👍 more of this — the search carries on the way it was going." +
                         "\n👎 not this — back, and off in another direction." +
-                        "\n🎲 somewhere else entirely, near one of the built-in points." +
+                        "\n🎲 somewhere else entirely." +
                         "\n↩ back one step." +
                         "\n\nA change arrives over about two seconds, so press and listen. " +
-                        "While you do, the app renders and scores candidates in the background, " +
-                        "and the next press takes the best one it found." +
-                        "\n\nA finger on the picture paints into it. 💾 keeps the point under a " +
+                        "A finger on the picture paints into it. 💾 keeps the point under a " +
                         "name, Points opens what you have kept, and ⚙ shows every parameter " +
                         "there is.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Got it") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(if (welcome) "Start listening" else "Got it") } },
     )
 }

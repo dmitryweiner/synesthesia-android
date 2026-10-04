@@ -32,7 +32,7 @@ import io.github.dmitryweiner.synesthesia.core.pointFromToken
 import io.github.dmitryweiner.synesthesia.core.pointToken
 import io.github.dmitryweiner.synesthesia.core.presets
 import io.github.dmitryweiner.synesthesia.gl.PictureSource
-import io.github.dmitryweiner.synesthesia.store.PointFiles
+import io.github.dmitryweiner.synesthesia.store.AppFiles
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,8 +88,8 @@ class PlaybackController(
     val sampleRate: Int =
         audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 48_000
 
-    /** The point files, in the app's own directory (PLAN.md decision 7). */
-    private val files = PointFiles(context.filesDir)
+    /** What is kept between runs, in the app's own directory (decision 7). */
+    val files = AppFiles(context.filesDir)
 
     /**
      * The points the user kept. The core holds the list and its rules; this
@@ -398,7 +398,7 @@ class PlaybackController(
                 // (it is the one that can draw the spots).
                 SessionEffect.Reseed -> reseedPending.set(true)
                 // The point to come back to, through a temporary file on a
-                // thread of its own (PointFiles).
+                // thread of its own (AppFiles).
                 is SessionEffect.SaveLastPoint -> files.saveLastPoint(effect.pointJson)
                 // Seconds of rendering, off this thread. A result for a point
                 // the user has left is dropped by the session, by its version.
@@ -525,7 +525,7 @@ class PlaybackController(
          * overwritten: an empty list is written back only once the user keeps
          * something, and until then the file is still there to be rescued.
          */
-        fun loadPoints(files: PointFiles): PointList {
+        fun loadPoints(files: AppFiles): PointList {
             val json = files.points() ?: return PointList()
             return try {
                 PointList.parse(json)
@@ -536,7 +536,7 @@ class PlaybackController(
         }
 
         /** Where the app was left, or the first built-in point. */
-        fun startSession(files: PointFiles, config: SessionConfig): Session {
+        fun startSession(files: AppFiles, config: SessionConfig): Session {
             val json = files.lastPoint()
             if (json != null) {
                 try {

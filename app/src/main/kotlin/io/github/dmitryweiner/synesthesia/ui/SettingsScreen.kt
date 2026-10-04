@@ -109,10 +109,11 @@ private fun SectionBlock(section: Section, edit: PointEdit, controller: Playback
     // Sections start closed: there are forty of them, and a point has 250
     // parameters.
     var open by remember(section.id) { mutableStateOf(false) }
+    var explain by remember(section.id) { mutableStateOf(false) }
     val toggle = section.toggle
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
-            Modifier.fillMaxWidth().clickable { open = !open }.padding(horizontal = 16.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().clickable { open = !open }.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -122,9 +123,25 @@ private fun SectionBlock(section: Section, edit: PointEdit, controller: Playback
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // What the thing is, in the schema's own words — the web app
+            // shows it beside each formula and card. There is nothing to say
+            // about an FX module or an LFO, and then there is no button.
+            if (section.description.isNotEmpty()) {
+                TextButton(
+                    onClick = { explain = !explain },
+                    modifier = Modifier.testTag("explain:${section.id}"),
+                ) { Text("?") }
+            }
             if (toggle != null) {
                 SwitchControl(toggle, edit, controller)
             }
+        }
+        if (explain) {
+            Text(
+                section.description,
+                Modifier.padding(start = 24.dp, end = 16.dp, bottom = 8.dp).testTag("about:${section.id}"),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
         if (open) {
             for (control in section.controls) {

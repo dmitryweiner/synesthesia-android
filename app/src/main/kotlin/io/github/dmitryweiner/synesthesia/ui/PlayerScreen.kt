@@ -1,5 +1,6 @@
 package io.github.dmitryweiner.synesthesia.ui
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.foundation.Image
@@ -24,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,12 +35,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.dmitryweiner.synesthesia.BuildConfig
 import io.github.dmitryweiner.synesthesia.R
@@ -77,6 +84,10 @@ enum class ViewMode {
         }
 }
 
+/** What was written to the store last time, or the picture. */
+private fun String?.toViewMode(): ViewMode =
+    ViewMode.entries.firstOrNull { it.name == this } ?: ViewMode.Picture
+
 /**
  * The player (PLAN.md phases 1–5): the picture or the spectrum, the point's
  * name with its step count, ▶, 👍 👎 🎲 ↩ and the status line that says what
@@ -95,9 +106,13 @@ fun PlayerScreen(
     val state by controller.state.collectAsStateWithLifecycle()
     var frame by remember { mutableStateOf<AudioFrame?>(null) }
     var stats by remember { mutableStateOf<OutputStats?>(null) }
-    var view by rememberSaveable { mutableStateOf(ViewMode.Picture) }
+    // Which view was on last time: the app opens where it was left, as it
+    // opens on the point it was left on.
+    var view by rememberSaveable { mutableStateOf(controller.files.view().toViewMode()) }
     // What full screen goes back to, so Close returns where it came from.
-    var beforeFull by rememberSaveable { mutableStateOf(ViewMode.Picture) }
+    var beforeFull by rememberSaveable { mutableStateOf(view.takeUnless { it == ViewMode.Full } ?: ViewMode.Picture) }
+    // Shown once, on the first run (PLAN.md phase 6).
+    var welcome by rememberSaveable { mutableStateOf(!controller.files.welcomeShown()) }
     var pointsOpen by rememberSaveable { mutableStateOf(false) }
     var naming by rememberSaveable { mutableStateOf(false) }
     var details by rememberSaveable { mutableStateOf(false) }
@@ -120,17 +135,21 @@ fun PlayerScreen(
         }
     }
 
+    val show = { next: ViewMode ->
+        view = next
+        controller.files.saveView(next.name)
+    }
     val swap = {
-        view = view.other()
+        show(view.other())
         said = "Showing the ${view.label.lowercase()}"
     }
     val enterFull = {
         beforeFull = view
-        view = ViewMode.Full
+        show(ViewMode.Full)
         said = null
     }
     val leaveFull = {
-        view = beforeFull
+        show(beforeFull)
         said = null
     }
 
@@ -200,6 +219,17 @@ fun PlayerScreen(
     if (help) {
         HelpDialog(onDismiss = { help = false })
     }
+    if (welcome) {
+        // The first run: what the app is and, first of all, that ▶ Play is
+        // what starts the sound — the one thing people were not finding.
+        HelpDialog(
+            onDismiss = {
+                welcome = false
+                controller.files.rememberWelcomeShown()
+            },
+            welcome = true,
+        )
+    }
 }
 
 /**
@@ -224,10 +254,12 @@ private fun Header(
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // A tablet has the room for it; a phone has not.
+            val wide = LocalConfiguration.current.screenWidthDp >= 600
             Image(
                 painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = stringResource(R.string.app_name),
-                modifier = Modifier.size(40.dp).testTag("logo"),
+                modifier = Modifier.size(if (wide) 72.dp else 40.dp).testTag("logo"),
             )
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onPoints, modifier = Modifier.testTag("points")) { Text("Points") }
@@ -337,6 +369,9 @@ private const val CLIP_LABEL = "Synesthesia point"
  */
 @Composable
 private fun FullPicture(controller: PlaybackController, state: PlaybackController.State, onClose: () -> Unit) {
+    // Full screen means the system's bars as well: they come back on a swipe
+    // from the edge, and go again when the page does.
+    HideSystemBars()
     Box(Modifier.fillMaxSize()) {
         Picture(controller, Modifier.fillMaxSize(), running = !state.settingsOpen)
         TextButton(
@@ -354,6 +389,21 @@ private fun FullPicture(controller: PlaybackController, state: PlaybackControlle
             SearchBar(controller, state.session)
             StatusLine(state.session, remember { controller.scoutThreads() })
         }
+    }
+}
+
+/** Hides the status and navigation bars while this is in the composition. */
+@Composable
+private fun HideSystemBars() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = (view.context as? Activity)?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        controller?.apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
     }
 }
 

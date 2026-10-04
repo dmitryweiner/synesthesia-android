@@ -7,7 +7,6 @@ import android.util.Log
 import android.view.MotionEvent
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
 import io.github.dmitryweiner.synesthesia.core.PictureDriver
-import io.github.dmitryweiner.synesthesia.core.backingStore
 import io.github.dmitryweiner.synesthesia.core.simGrid
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -49,10 +48,6 @@ class PictureView(context: Context) : GLSurfaceView(context) {
 
     private val renderer = PassRenderer()
 
-    @Volatile private var viewWidth = 0
-
-    @Volatile private var viewHeight = 0
-
     init {
         setEGLContextClientVersion(3)
         // No depth, no stencil, no alpha: seven fullscreen passes and a blit.
@@ -63,10 +58,19 @@ class PictureView(context: Context) : GLSurfaceView(context) {
         keepScreenOn = true
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        viewWidth = w
-        viewHeight = h
+    /**
+     * Always the size the layout gives it.
+     *
+     * `SurfaceView.onMeasure` otherwise answers with whatever
+     * `SurfaceHolder.setFixedSize` last asked for, which is a buffer size and
+     * not a layout — on a large screen that measured the picture at the
+     * quality rung's cap and pushed the header off the top.
+     */
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        setMeasuredDimension(
+            getDefaultSize(0, widthMeasureSpec),
+            getDefaultSize(0, heightMeasureSpec),
+        )
     }
 
     @SuppressLint("ClickableViewAccessibility") // performClick() is called below
@@ -156,16 +160,11 @@ class PictureView(context: Context) : GLSurfaceView(context) {
                 sim.reseed(source?.picture?.reseed() ?: return)
                 seeded = true
             }
-            // Cap the surface itself, as the web app caps its canvas. The
-            // view keeps its size; the compositor scales.
-            val (vw, vh) = viewWidth to viewHeight
-            if (vw > 0 && vh > 0) {
-                val store = backingStore(rung.maxSide, vw.toUInt(), vh.toUInt())
-                val (w, h) = store.width.toInt() to store.height.toInt()
-                if (w != surfaceWidth || h != surfaceHeight) {
-                    post { holder.setFixedSize(w, h) }
-                }
-            }
+            // The surface itself is not capped here, where the web app caps
+            // its canvas: the web app's numbers come from software
+            // rasterizers, and a phone has a GPU, for which the display pass
+            // is one fullscreen pass against the reaction's sixteen at the
+            // grid's size. The rung moves the grid; the surface is the view.
         }
     }
 

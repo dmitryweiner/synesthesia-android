@@ -2,6 +2,7 @@ package io.github.dmitryweiner.synesthesia
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -37,6 +38,38 @@ class MainActivityTest {
             app.playback.stop()
             app.playback.select(0)
         }
+        // The welcome is shown once per install; whichever test runs first
+        // meets it, so every test closes it if it is there.
+        val welcome = compose.onAllNodesWithTag("welcome")
+        if (welcome.fetchSemanticsNodes().isNotEmpty()) {
+            compose.onNodeWithText("Start listening").performClick()
+        }
+    }
+
+    @Test
+    fun theFirstRunSaysWhatToPressFirst() {
+        val app = compose.activity.application as SynesthesiaApp
+        // Whatever the @Before found, the welcome has been shown by now and
+        // does not come back.
+        app.playback.files.rememberWelcomeShown()
+        compose.onAllNodesWithTag("welcome").fetchSemanticsNodes().let {
+            assertEquals("the welcome is shown once", 0, it.size)
+        }
+        // And what it says is where the sound comes from.
+        compose.onNodeWithTag("more").performClick()
+        compose.onNodeWithTag("openHelp").performClick()
+        compose.onNodeWithText("▶ Play starts the sound", substring = true).assertExists()
+        compose.onNodeWithText("Got it").performClick()
+    }
+
+    @Test
+    fun aSectionInSettingsSaysWhatTheThingIs() {
+        compose.onNodeWithTag("openSettings").performClick()
+        // The schema's own words about a formula, behind the (?).
+        compose.onNodeWithTag("settingsList").performScrollToNode(hasTestTag("explain:a.additive"))
+        compose.onNodeWithTag("explain:a.additive").performClick()
+        compose.onNodeWithTag("about:a.additive").assertIsDisplayed()
+        compose.onNodeWithTag("closeSettings").performClick()
     }
 
     @Test

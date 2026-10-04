@@ -7,7 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.dmitryweiner.synesthesia.core.PointList
 import io.github.dmitryweiner.synesthesia.core.pointToken
 import io.github.dmitryweiner.synesthesia.core.presetStateJson
-import io.github.dmitryweiner.synesthesia.store.PointFiles
+import io.github.dmitryweiner.synesthesia.store.AppFiles
 import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -27,13 +27,13 @@ import org.junit.runner.RunWith
 class PointsTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private lateinit var dir: File
-    private lateinit var files: PointFiles
+    private lateinit var files: AppFiles
 
     @Before
     fun aDirectoryOfItsOwn() {
         dir = File(context.cacheDir, "points-test-${System.nanoTime()}")
         dir.mkdirs()
-        files = PointFiles(dir)
+        files = AppFiles(dir)
     }
 
     @After
@@ -90,7 +90,7 @@ class PointsTest {
         assertEquals(name, playback.state.value.session.pointName)
 
         // A load settles at once, so the last point is written by now.
-        val appFiles = PointFiles(context.filesDir)
+        val appFiles = AppFiles(context.filesDir)
         waitFor("the last point to reach the disk") {
             appFiles.lastPoint()?.contains("\"presetName\":\"$name\"") == true
         }

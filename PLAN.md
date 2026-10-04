@@ -311,6 +311,9 @@ copied into this repository.
    off; and by hand — the lock screen and headphone controls, a call
    pausing and resuming the sound, unplugging headphones, switching presets
    while playing without a click.
+   **Phase 2 did not re-open it on the phone it was heard on** (2026-10-04:
+   presses cost no `core %` worth noticing), but one report of crackling on
+   backgrounding, on another device, is open against it — see phase 2.
 2. ✅ **Session.** `syn-session` ported from `main.ts` / `main.rs` with host
    tests; the main screen: 👎 👍 🎲 ↩, status, point name, morph audible;
    👍/👎 from the notification.
@@ -363,16 +366,28 @@ copied into this repository.
    every second of it in battery. It stays a setting (open question 1), and
    the number that decides it is on screen: the status line says *scouted
    3 + 3 candidates in X.X s* after every batch.
-   **On a phone (to be done by the user, with the CI artifact `app-debug`):**
-   - 👍 and 👎 while listening: the change arrives as a glide over about two
-     seconds, with no click; pressing again mid-glide carries on from what is
-     heard rather than jumping back.
-   - 🎲 lands near another point and ↩ goes back; the title counts the steps.
-   - With the screen off: 👍 and 👎 on the notification and the lock screen
-     steer the point, and the sound keeps playing through the change.
-   - The numbers to write down here (decision 12): the *scouted … in X.X s*
-     line, and `core %` / underruns on the screen while a batch renders —
-     this is what re-opens decision 5 if anything does.
+   **On a real phone (2026-10-04, by the user): 👍 and 👎 work, the sound is
+   not interrupted by a press, and `core %` showed no growth worth
+   noticing** — so the search costs the listening nothing on that device.
+   Still open, and still wanted as numbers (decision 12): the
+   *scouted … in X.X s* line, and `core %` / underruns while a batch
+   renders.
+   **One report of crackling when the app went to the background**, from
+   another user, on what may be a weak device — the one thing phase 2 could
+   have caused and the phone it happened on cannot say. What would settle it,
+   on *that* device: `underruns` and `core %` on the screen (both are
+   there), and whether it happens with the search left alone, which takes the
+   scout out of the picture. The suspects, in order:
+   - the scout's renders taking the little cores the audio thread was using —
+     exactly what decision 5 said to re-check once phase 2 landed. Its
+     thread count, length and rate are already settings in the core
+     (`SessionConfig`), so this is tunable without a port;
+   - a device that cannot render the heaviest preset at its own sample rate
+     at all, which `core %` near 100 would say;
+   - the 250 ms output buffer being too shallow for a phone that stalls when
+     the window goes away.
+   None of the three is worth acting on without that number: a guess here
+   would be tuning by ear (see Don'ts).
 3. ⏭ **Picture (next).** GLES 3.0 renderer with the verbatim shaders, frame params
    from the core, onset hits → growth + ripples, touch painting, quality
    probe, the CPU fallback, the GPU-vs-CPU parity test.

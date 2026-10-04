@@ -76,6 +76,17 @@ class MainActivityTest {
     }
 
     @Test
+    fun thePointsNameHasALineOfItsOwn() {
+        // It is the longest thing on the screen; sharing a line with the
+        // buttons left "Candle glaze · 3 steps" as "Cand…".
+        val name = compose.onNodeWithTag("openPoints")
+        name.assertIsDisplayed()
+        val width = name.fetchSemanticsNode().size.width
+        val controls = compose.onNodeWithTag("points").fetchSemanticsNode().size.width
+        assertTrue("the name has the width to itself: $width vs a button's $controls", width > 4 * controls)
+    }
+
+    @Test
     fun theSwitchUnderTheBlockSwapsThePictureAndTheSpectrum() {
         // It offers the other one, which is what a switch should say.
         compose.onNodeWithTag("viewMode").assertTextEquals("Spectrum")

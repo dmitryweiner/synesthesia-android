@@ -189,8 +189,12 @@ fun PlayerScreen(
 }
 
 /**
- * The point's name is the way into the points, as it is in the web app; what
- * is used often sits next to it, and ⋮ holds the rest.
+ * The controls on one line and the point's name on its own, under them.
+ *
+ * The name shared the line at first and lost: it is the longest thing on the
+ * screen and the buttons are the widest, so "Candle glaze · 3 steps" came out
+ * as "Cand…" even on a large phone. It has the full width now; what is
+ * squeezed instead is the version, which nobody reads twice.
  */
 @Composable
 private fun Header(
@@ -202,25 +206,27 @@ private fun Header(
     onSaid: (String) -> Unit,
     controller: PlaybackController,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(
-            Modifier.weight(1f).clickable(onClick = onPoints).testTag("openPoints").padding(vertical = 4.dp),
-        ) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                state.session.name,
-                style = MaterialTheme.typography.titleLarge,
+                "${BuildConfig.VERSION_NAME} · core ${remember { coreVersion() }}",
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.labelSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                "${BuildConfig.VERSION_NAME} · core ${remember { coreVersion() }} · tap for points",
-                style = MaterialTheme.typography.labelSmall,
-            )
+            TextButton(onClick = onPoints, modifier = Modifier.testTag("points")) { Text("Points") }
+            TextButton(onClick = onSettings, modifier = Modifier.testTag("openSettings")) { Text("⚙") }
+            TextButton(onClick = onKeep, modifier = Modifier.testTag("keepPoint")) { Text("💾") }
+            MoreMenu(controller, playing = state.playing, onBench = onBench, onSaid = onSaid)
         }
-        TextButton(onClick = onPoints, modifier = Modifier.testTag("points")) { Text("Points") }
-        TextButton(onClick = onSettings, modifier = Modifier.testTag("openSettings")) { Text("⚙") }
-        TextButton(onClick = onKeep, modifier = Modifier.testTag("keepPoint")) { Text("💾") }
-        MoreMenu(controller, playing = state.playing, onBench = onBench, onSaid = onSaid)
+        Text(
+            state.session.name,
+            Modifier.fillMaxWidth().clickable(onClick = onPoints).testTag("openPoints"),
+            style = MaterialTheme.typography.titleLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

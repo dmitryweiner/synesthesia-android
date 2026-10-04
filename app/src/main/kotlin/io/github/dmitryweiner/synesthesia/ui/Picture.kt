@@ -4,9 +4,6 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +19,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import io.github.dmitryweiner.synesthesia.gl.CpuPictureView
 import io.github.dmitryweiner.synesthesia.gl.PictureSource
 import io.github.dmitryweiner.synesthesia.gl.PictureView
 
@@ -41,12 +39,12 @@ fun Picture(source: PictureSource, modifier: Modifier = Modifier) {
 
     Box(modifier.background(Color.Black), contentAlignment = Alignment.Center) {
         if (missingFloatTargets) {
-            // The fallback is the core's CPU picture; until that is wired up,
-            // say what is wrong rather than show a black rectangle.
-            Text(
-                "This device cannot draw the picture: no float render targets.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(16.dp),
+            // No float render targets: the core draws the picture itself and
+            // this only shows the pixels (PLAN.md decision 4).
+            AndroidView(
+                factory = { context: Context -> CpuPictureView(context).also { it.source = source } },
+                modifier = Modifier.fillMaxSize().testTag("picture"),
+                update = { it.source = source },
             )
         } else {
             AndroidView(

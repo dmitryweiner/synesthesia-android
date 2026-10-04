@@ -11,6 +11,7 @@ import android.opengl.GLES30
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.dmitryweiner.synesthesia.core.PictureDriver
+import io.github.dmitryweiner.synesthesia.core.PictureFrame
 import io.github.dmitryweiner.synesthesia.core.presetStateJson
 import io.github.dmitryweiner.synesthesia.core.simGrid
 import io.github.dmitryweiner.synesthesia.gl.SimRenderer
@@ -32,7 +33,8 @@ import org.junit.runner.RunWith
  * takes colour from the point and answers an injected disc.
  *
  * It renders into an off-screen surface of its own rather than into the
- * app's, so it can read the pixels back.
+ * app's, so it can read the pixels back — which is also what lets it compare
+ * the GPU's picture with the core's CPU one on a single seeded field.
  */
 @RunWith(AndroidJUnit4::class)
 class PictureTest {
@@ -105,27 +107,88 @@ class PictureTest {
     }
 
     @Test
-    fun aFingerLeavesItsMarkOnThePicture() {
+    fun aFingerLeavesItsMarkWhereTheFingerWas() {
         assumeTrue("this device has no float render targets", floatTargetsAvailable())
-        val driver = PictureDriver(3u, requireNotNull(presetStateJson(1u)), false)
+        // The field changes everywhere at every step, so "did the finger do
+        // something" cannot be asked of two moments of one picture. It is
+        // asked of two pictures of the same moment: same seed, same frames,
+        // and a finger in only one of them.
         val grid = simGrid(96u, SIDE.toUInt(), SIDE.toUInt())
-        val sim = SimRenderer(context.assets, grid.width.toInt(), grid.height.toInt())
-        sim.reseed(driver.reseed())
-        render(sim, driver, steps = 10)
-        val before = render(sim, driver, steps = 1)
+        val touched = PictureDriver(3u, requireNotNull(presetStateJson(1u)), false)
+        val plain = PictureDriver(3u, requireNotNull(presetStateJson(1u)), false)
+        val a = SimRenderer(context.assets, grid.width.toInt(), grid.height.toInt())
+        val b = SimRenderer(context.assets, grid.width.toInt(), grid.height.toInt())
+        val seed = touched.reseed()
+        plain.reseed() // keep the two drivers' randomness in step
+        a.reseed(seed)
+        b.reseed(seed)
 
-        // A finger in the middle: the disc it injects has to show up there.
-        driver.pointerDown(0.5f, 0.5f, 0.0)
-        val frame = driver.frame(1.0, null, sim.aspect)
-        assertEquals(1, frame.injects.size)
-        sim.step(frame)
-        sim.draw(frame, SIDE, SIDE)
-        val after = readPixels()
-        driver.pointerUp()
+        var t = 0.0
+        repeat(10) {
+            t += 1.0 / 30.0
+            a.stepAndDraw(touched.frame(t, null, a.aspect))
+            b.stepAndDraw(plain.frame(t, null, b.aspect))
+        }
 
-        val middle = different(before, after, inMiddle = true)
-        val corners = different(before, after, inMiddle = false)
-        assertTrue("the middle changed where the finger was: $middle vs $corners at the edges", middle > corners)
+        // A finger in the middle of one of them.
+        touched.pointerDown(0.5f, 0.5f, t)
+        t += 1.0 / 30.0
+        val withFinger = touched.frame(t, null, a.aspect)
+        val without = plain.frame(t, null, b.aspect)
+        assertEquals(1, withFinger.injects.size)
+        assertTrue("the other picture was not touched", without.injects.isEmpty())
+        a.stepAndDraw(withFinger)
+        val marked = readPixels()
+        b.stepAndDraw(without)
+        val unmarked = readPixels()
+        touched.pointerUp()
+
+        val middle = different(marked, unmarked, inMiddle = true)
+        val edges = different(marked, unmarked, inMiddle = false)
+        assertTrue("the finger's disc shows: $middle of the middle moved", middle > 0.1)
+        assertTrue("and it shows where the finger was: $middle in the middle, $edges at the edges", middle > 3 * edges)
+    }
+
+    @Test
+    fun theCpuPictureAndTheGpuPictureAreTheSamePicture() {
+        assumeTrue("this device has no float render targets", floatTargetsAvailable())
+        // The CPU picture's grid is twice its pixels, so a PIXELS-wide picture
+        // and a 2*PIXELS grid put both paths on the same field (PLAN.md
+        // decision 4: the CPU picture is the reference).
+        val pixels = 64
+        val driver = PictureDriver(21u, requireNotNull(presetStateJson(0u)), false)
+        driver.useCpuPicture(21u, pixels.toUInt(), pixels.toUInt())
+        val sim = SimRenderer(context.assets, 2 * pixels, 2 * pixels)
+        val seed = driver.reseed()
+        sim.reseed(seed)
+        driver.cpuSeed(seed)
+
+        var gpu = ByteArray(0)
+        var cpu = ByteArray(0)
+        var t = 0.0
+        repeat(3) {
+            t += 1.0 / 30.0
+            val frame = driver.frame(t, null, sim.aspect)
+            sim.step(frame)
+            sim.draw(frame, pixels, pixels)
+            gpu = flipRows(readPixels(pixels), pixels)
+            cpu = requireNotNull(driver.cpuFrame()) { "the CPU picture" }
+        }
+        assertEquals(cpu.size, gpu.size)
+
+        // A control: the same two paths from a different seed. The agreement
+        // between the two renderers has to be far closer than that, or this
+        // test would pass on any two pictures.
+        val other = PictureDriver(22u, requireNotNull(presetStateJson(0u)), false)
+        other.useCpuPicture(22u, pixels.toUInt(), pixels.toUInt())
+        other.cpuSeed(other.reseed())
+        other.frame(1.0 / 30.0, null, 1f)
+        val unrelated = requireNotNull(other.cpuFrame())
+
+        val agreement = meanDifference(gpu, cpu)
+        val control = meanDifference(unrelated, cpu)
+        assertTrue("two pictures of the same field: $agreement apart, two of different ones: $control", control > 4 * agreement)
+        assertTrue("and they agree closely: $agreement", agreement < 24.0)
     }
 
     /** Steps and draws `steps` frames, and reads back the last one. */
@@ -133,22 +196,47 @@ class PictureTest {
         var t = 0.0
         repeat(steps) {
             t += 1.0 / 30.0
-            val frame = driver.frame(t, null, sim.aspect)
-            sim.step(frame)
-            sim.draw(frame, SIDE, SIDE)
+            sim.stepAndDraw(driver.frame(t, null, sim.aspect))
         }
         return readPixels()
     }
 
-    private fun readPixels(): ByteArray {
-        val buffer = ByteBuffer.allocateDirect(SIDE * SIDE * 4).order(ByteOrder.nativeOrder())
+    private fun SimRenderer.stepAndDraw(frame: PictureFrame) {
+        step(frame)
+        draw(frame, SIDE, SIDE)
+    }
+
+    private fun readPixels(side: Int = SIDE): ByteArray {
+        val buffer = ByteBuffer.allocateDirect(side * side * 4).order(ByteOrder.nativeOrder())
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
-        GLES30.glReadPixels(0, 0, SIDE, SIDE, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, buffer)
+        GLES30.glReadPixels(0, 0, side, side, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, buffer)
         assertEquals("glReadPixels", GLES30.GL_NO_ERROR, GLES30.glGetError())
-        val out = ByteArray(SIDE * SIDE * 4)
+        val out = ByteArray(side * side * 4)
         buffer.rewind()
         buffer.get(out)
         return out
+    }
+
+    /** glReadPixels hands back the bottom row first; a picture's is the top. */
+    private fun flipRows(pixels: ByteArray, side: Int): ByteArray {
+        val out = ByteArray(pixels.size)
+        val stride = side * 4
+        for (y in 0 until side) {
+            System.arraycopy(pixels, y * stride, out, (side - 1 - y) * stride, stride)
+        }
+        return out
+    }
+
+    /** Mean absolute difference per colour channel, 0..255. */
+    private fun meanDifference(a: ByteArray, b: ByteArray): Double {
+        var sum = 0L
+        var counted = 0
+        for (i in a.indices) {
+            if (i % 4 == 3) continue // alpha
+            sum += kotlin.math.abs((a[i].toInt() and 0xFF) - (b[i].toInt() and 0xFF))
+            counted++
+        }
+        return sum.toDouble() / counted
     }
 
     /** How many distinct luminance levels the image has — a flat fill has one. */

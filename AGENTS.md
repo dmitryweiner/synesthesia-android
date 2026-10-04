@@ -86,7 +86,8 @@ app/                  the application (Compose)
                       with 👎 ⏹/▶ 👍)
   gl/                 the picture: Program (shaders → passes), Targets
                       (RG16F ping-pong), SimRenderer (the seven passes),
-                      PictureView (the GL surface, the rung, the finger)
+                      PictureView (the GL surface, the rung, the finger),
+                      CpuPictureView (the fallback: the core draws, this blits)
   ui/                 PlayerScreen (the picture, the presses, the status),
                       Picture (the view in Compose), Meters, BenchScreen
   bench/              Bench: offline render speed per preset

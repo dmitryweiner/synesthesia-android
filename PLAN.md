@@ -20,14 +20,14 @@ in Russian — the same rule as the sibling projects.
 | 0 | Scaffold: core repo, Gradle + cargo-ndk + UniFFI | ✅ done 2026-10-03, runs on a phone |
 | 1 | Sound, in the background | ✅ done 2026-10-03, plays on a phone with the screen off; numbers still to take (see phase 1) |
 | 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ✅ done; listened to on a phone 2026-10-04 |
-| 3 | Picture (GLES 3.0) | 🔨 **in progress**: the GPU path is built 2026-10-04; the CPU fallback and the parity test are next |
+| 3 | Picture (GLES 3.0) | ✅ built 2026-10-04; to be looked at on a phone (see phase 3) |
 | 4 | Points and tokens | — |
 | 5 | Settings | — |
 | 6 | Polish | — |
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`57d7f17`); this repository, `main` (phases 0 and 1 merged on
+`6d3b151`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
 
 ## What the two existing ports teach
@@ -390,7 +390,7 @@ copied into this repository.
      the window goes away.
    None of the three is worth acting on without that number: a guess here
    would be tuning by ear (see Don'ts).
-3. 🔨 **Picture.** GLES 3.0 renderer with the verbatim shaders, frame params
+3. ✅ **Picture.** GLES 3.0 renderer with the verbatim shaders, frame params
    from the core, onset hits → growth + ripples, touch painting, quality
    probe, the CPU fallback, the GPU-vs-CPU parity test.
    **Built 2026-10-04 (the GPU path):**
@@ -434,9 +434,32 @@ copied into this repository.
      the seven passes and reads the pixels back — the shaders compile, the
      seed spots show, the pattern grows and stays a picture, another point
      paints differently, and a finger's disc lands where the finger was.
-   **Still to do in this phase:** the CPU fallback for a device with no float
-   render targets (the screen says so instead of drawing), and the
-   GPU-vs-CPU parity test on the same seeded field.
+   **The CPU fallback, and the two pictures compared (2026-10-04):** a device
+   that cannot render into a float texture draws the core's own picture
+   instead — the same driver, the same frames, the same seed spots, only the
+   field in RAM (`PictureDriver.use_cpu_picture`, `cpu_frame`), stepped on a
+   thread of its own and blitted by a plain `View`. It walks the same quality
+   ladder, measured the same way, capping the picture's size rather than a
+   surface's. `Sim::step` now takes the noise drift rather than keeping it, so
+   both paths drift by the same clock — the driver's.
+   On a device, the two are compared where the plan asks: the same seed and
+   the same frames into both, and the GPU's picture must agree with the CPU's
+   far more closely than two pictures of different fields do (the control the
+   test measures against). They cannot be identical — the state lives in
+   half floats on the GPU and in f32 here — so the test says *how* close, and
+   fails if the two paths drift apart.
+   **On a phone (to be done by the user, with the CI artifact `app-debug`):**
+   - the picture moves with the sound: it breathes with the loudness, flares
+     and sprouts on a bell, and takes its colours from the point;
+   - 👍 👎 🎲 ↩ change it as they change the sound, and a load starts a new
+     one;
+   - a finger paints a stroke into it, and a drag is a line, not dots;
+   - the screen stays on while it shows, and the picture stops when the app
+     goes to the background — with the sound carrying on and the picture
+     rejoining in step when it comes back;
+   - the numbers (decision 12): the frame rate it settles at and which rung
+     it picks, and whether `core %` or underruns move once the picture is
+     running (the second half of the crackle report from phase 2).
 4. **Points and tokens.** Last point restored; 💾 with a name; *My points*;
    export a `#s=` token, import one from the clipboard or an opened link.
    The points list model (decision 2) moves into `syn-session` here, with the

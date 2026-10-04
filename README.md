@@ -13,7 +13,7 @@ repository is the Android app around it: the audio device, the GPU picture,
 storage, the background service and the interface, in Kotlin.
 [PLAN.md](PLAN.md) has the decisions and the phases.
 
-**Status: phase 2.** The built-in points play, also with the screen off
+**Status: phases 0–6 are in.** The built-in points play, also with the screen off
 (a foreground service with a media notification and lock-screen controls),
 the screen shows what the sound is doing, and 👍 👎 🎲 ↩ steer the search:
 a press glides the sound to where it leads over about two seconds, and
@@ -26,7 +26,9 @@ are kept under the names you give them and come back on the next start
 (phase 4), and a point travels to and from the web app as a `#s=` token or a
 link — locally, with no account and no network. ⚙ Settings (phase 5) shows
 every one of the point's parameters, on a page the core generates from the
-schema: when the model grows a parameter, the page grows with it.
+schema: when the model grows a parameter, the page grows with it. One button
+swaps the picture for a spectrogram, another gives it the whole screen, and
+⋮ holds what the point is made of, how the app works, and its tokens.
 
 ## Trying it on a phone
 

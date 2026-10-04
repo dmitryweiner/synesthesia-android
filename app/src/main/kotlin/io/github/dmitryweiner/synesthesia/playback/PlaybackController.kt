@@ -218,6 +218,9 @@ class PlaybackController(
         _state.update { it.copy(session = session.view()) }
     }
 
+    /** The point the search is at — what Details reads and 💾 keeps. */
+    fun pointJson(): String = session.pointJson()
+
     /** The point as the web app's `#s=` token, to paste into a browser. */
     fun token(): String = pointToken(session.pointJson())
 

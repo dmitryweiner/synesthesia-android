@@ -76,9 +76,36 @@ class MainActivityTest {
     }
 
     @Test
-    fun theHeaderShowsTheAppsMarkRatherThanItsVersion() {
+    fun theHeaderShowsTheAppsMarkAndTheMenuItsVersion() {
         compose.onNodeWithTag("logo").assertIsDisplayed()
-        compose.onNodeWithText("core 0.1.0", substring = true).assertDoesNotExist()
+        // The version is reference, not decoration: it is in the menu, where
+        // tapping it copies the two numbers a report needs.
+        compose.onNodeWithText("core", substring = true).assertDoesNotExist()
+        compose.onNodeWithTag("more").performClick()
+        compose.onNodeWithTag("version").assertIsDisplayed()
+        compose.onNodeWithTag("version").performClick()
+        compose.onNodeWithText("Copied: ", substring = true).assertExists()
+    }
+
+    @Test
+    fun theDetailsSayWhatThePointIsAndWhatTheLastPressChanged() {
+        compose.onNodeWithTag("like").performClick()
+        compose.onNodeWithTag("more").performClick()
+        compose.onNodeWithTag("openDetails").performClick()
+        // The half of the status the main screen does not show.
+        compose.onNodeWithTag("changed").assertIsDisplayed()
+        compose.onNodeWithText("What is switched on").assertExists()
+        // The point's parts, as the schema names them.
+        compose.onNodeWithText("Filter", substring = true).assertExists()
+    }
+
+    @Test
+    fun theHelpSaysWhatThePressesDo() {
+        compose.onNodeWithTag("more").performClick()
+        compose.onNodeWithTag("openHelp").performClick()
+        compose.onNodeWithText("Synesthesia").assertExists()
+        compose.onNodeWithText("more of this", substring = true).assertExists()
+        compose.onNodeWithText("Got it").performClick()
     }
 
     @Test

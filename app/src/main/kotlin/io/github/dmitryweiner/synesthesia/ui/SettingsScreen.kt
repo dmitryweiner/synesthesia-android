@@ -249,7 +249,7 @@ private class Scale(private val control: Control) {
 }
 
 /** Enough digits to see a change, not more. */
-private fun format(v: Double): String = when {
+internal fun format(v: Double): String = when {
     v == 0.0 -> "0"
     kotlin.math.abs(v) >= 100 -> "%.0f".format(v)
     kotlin.math.abs(v) >= 1 -> "%.2f".format(v)

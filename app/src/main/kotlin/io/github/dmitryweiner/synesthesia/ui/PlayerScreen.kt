@@ -40,10 +40,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.dmitryweiner.synesthesia.BuildConfig
 import io.github.dmitryweiner.synesthesia.R
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
 import io.github.dmitryweiner.synesthesia.core.SessionView
+import io.github.dmitryweiner.synesthesia.core.coreVersion
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
 
 /**
@@ -98,6 +100,8 @@ fun PlayerScreen(
     var beforeFull by rememberSaveable { mutableStateOf(ViewMode.Picture) }
     var pointsOpen by rememberSaveable { mutableStateOf(false) }
     var naming by rememberSaveable { mutableStateOf(false) }
+    var details by rememberSaveable { mutableStateOf(false) }
+    var help by rememberSaveable { mutableStateOf(false) }
     var said by remember { mutableStateOf<String?>(null) }
 
     // The meters follow the *played* sound, once per screen frame — and only
@@ -139,6 +143,8 @@ fun PlayerScreen(
                 onPoints = { pointsOpen = true },
                 onSettings = onSettings,
                 onKeep = { naming = true },
+                onDetails = { details = true },
+                onHelp = { help = true },
                 onSaid = { said = it },
                 controller = controller,
             )
@@ -188,6 +194,12 @@ fun PlayerScreen(
     if (naming) {
         KeepDialog(controller, onDismiss = { naming = false })
     }
+    if (details) {
+        DetailsSheet(controller, state.session, onDismiss = { details = false })
+    }
+    if (help) {
+        HelpDialog(onDismiss = { help = false })
+    }
 }
 
 /**
@@ -205,6 +217,8 @@ private fun Header(
     onPoints: () -> Unit,
     onSettings: () -> Unit,
     onKeep: () -> Unit,
+    onDetails: () -> Unit,
+    onHelp: () -> Unit,
     onSaid: (String) -> Unit,
     controller: PlaybackController,
 ) {
@@ -219,7 +233,7 @@ private fun Header(
             TextButton(onClick = onPoints, modifier = Modifier.testTag("points")) { Text("Points") }
             TextButton(onClick = onSettings, modifier = Modifier.testTag("openSettings")) { Text("⚙") }
             TextButton(onClick = onKeep, modifier = Modifier.testTag("keepPoint")) { Text("💾") }
-            MoreMenu(controller, onSaid = onSaid)
+            MoreMenu(controller, onDetails = onDetails, onHelp = onHelp, onSaid = onSaid)
         }
         Text(
             state.session.name,
@@ -233,15 +247,39 @@ private fun Header(
     }
 }
 
-/** What is wanted rarely: the tokens a point travels as (PLAN.md decision 8). */
+/**
+ * What is wanted rarely: what the point is made of, what the app is, and the
+ * tokens a point travels as (PLAN.md decision 8).
+ */
 @Composable
-private fun MoreMenu(controller: PlaybackController, onSaid: (String) -> Unit) {
+private fun MoreMenu(
+    controller: PlaybackController,
+    onDetails: () -> Unit,
+    onHelp: () -> Unit,
+    onSaid: (String) -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val clipboard = remember(context) { context.getSystemService(ClipboardManager::class.java) }
     Box {
         TextButton(onClick = { open = true }, modifier = Modifier.testTag("more")) { Text("⋮") }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("What is this point?") },
+                onClick = {
+                    onDetails()
+                    open = false
+                },
+                modifier = Modifier.testTag("openDetails"),
+            )
+            DropdownMenuItem(
+                text = { Text("How this works") },
+                onClick = {
+                    onHelp()
+                    open = false
+                },
+                modifier = Modifier.testTag("openHelp"),
+            )
             DropdownMenuItem(
                 text = { Text("Copy this point as a token") },
                 onClick = {
@@ -269,6 +307,19 @@ private fun MoreMenu(controller: PlaybackController, onSaid: (String) -> Unit) {
                     open = false
                 },
                 modifier = Modifier.testTag("pasteToken"),
+            )
+            // Which build this is, and which model it runs — the two numbers
+            // a report about anything needs. Tapping copies them, so they can
+            // be pasted rather than transcribed.
+            val version = "${BuildConfig.VERSION_NAME} · core ${remember { coreVersion() }}"
+            DropdownMenuItem(
+                text = { Text("Version $version") },
+                onClick = {
+                    clipboard.setPrimaryClip(ClipData.newPlainText(CLIP_LABEL, version))
+                    onSaid("Copied: $version")
+                    open = false
+                },
+                modifier = Modifier.testTag("version"),
             )
         }
     }

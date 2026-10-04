@@ -23,7 +23,7 @@ in Russian — the same rule as the sibling projects.
 | 3 | Picture (GLES 3.0) | ✅ done; looked at on a phone 2026-10-04 |
 | 4 | Points and tokens | ✅ built 2026-10-04; to be tried on a phone (see phase 4) |
 | 5 | Settings | ✅ built 2026-10-04; to be tried on a phone (see phase 5) |
-| 6 | Polish | ⏭ **next** |
+| 6 | Polish | ✅ done 2026-10-04 (the UI rounds; more as the user finds it) |
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at

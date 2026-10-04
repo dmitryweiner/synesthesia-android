@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.MotionEvent
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
 import io.github.dmitryweiner.synesthesia.core.PictureDriver
+import io.github.dmitryweiner.synesthesia.core.backingStore
 import io.github.dmitryweiner.synesthesia.core.simGrid
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -64,7 +65,8 @@ class PictureView(context: Context) : GLSurfaceView(context) {
      * `SurfaceView.onMeasure` otherwise answers with whatever
      * `SurfaceHolder.setFixedSize` last asked for, which is a buffer size and
      * not a layout — on a large screen that measured the picture at the
-     * quality rung's cap and pushed the header off the top.
+     * quality rung's cap and pushed the header off the top. The cap belongs
+     * to the buffer alone; this is what keeps it there.
      */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(
@@ -160,11 +162,25 @@ class PictureView(context: Context) : GLSurfaceView(context) {
                 sim.reseed(source?.picture?.reseed() ?: return)
                 seeded = true
             }
-            // The surface itself is not capped here, where the web app caps
-            // its canvas: the web app's numbers come from software
-            // rasterizers, and a phone has a GPU, for which the display pass
-            // is one fullscreen pass against the reaction's sixteen at the
-            // grid's size. The rung moves the grid; the surface is the view.
+            // The surface is capped by the rung, as the web app caps its
+            // canvas: the display pass runs once per surface pixel, and on a
+            // device whose GL is software — an emulator, and the machines the
+            // web app's ladder was measured on — that pass is what eats the
+            // cores the sound needs. Dropping this cap was tried and taken
+            // back: CI's API 35 emulator lost the audio thread to it.
+            //
+            // It is only the surface's *buffer* that shrinks. The view keeps
+            // the size its layout gives it (see onMeasure), which is what the
+            // compositor scales the buffer to.
+            val vw = width
+            val vh = height
+            if (vw > 0 && vh > 0) {
+                val store = backingStore(rung.maxSide, vw.toUInt(), vh.toUInt())
+                val (w, h) = store.width.toInt() to store.height.toInt()
+                if (w != surfaceWidth || h != surfaceHeight) {
+                    post { holder.setFixedSize(w, h) }
+                }
+            }
         }
     }
 

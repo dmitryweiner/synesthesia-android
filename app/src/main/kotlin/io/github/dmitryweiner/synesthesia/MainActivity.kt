@@ -22,7 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
-import io.github.dmitryweiner.synesthesia.ui.BenchScreen
 import io.github.dmitryweiner.synesthesia.ui.PlayerScreen
 import io.github.dmitryweiner.synesthesia.ui.SettingsScreen
 
@@ -35,7 +34,6 @@ class MainActivity : ComponentActivity() {
         var fromLink by mutableStateOf(openLink(controller, intent))
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
-                var bench by rememberSaveable { mutableStateOf(false) }
                 var settings by rememberSaveable { mutableStateOf(false) }
                 // Android 13+ asks before showing the playback notification.
                 // The sound plays whatever the answer: it is asked once, on
@@ -68,10 +66,6 @@ class MainActivity : ComponentActivity() {
                         settings = false
                     }
                     when {
-                        bench -> {
-                            BackHandler { bench = false }
-                            BenchScreen(controller.sampleRate, onBack = { bench = false }, Modifier.padding(padding))
-                        }
                         settings -> {
                             // Back closes the page the same way Done does:
                             // one undoable step, or nothing at all.
@@ -81,7 +75,6 @@ class MainActivity : ComponentActivity() {
                         else -> PlayerScreen(
                             controller,
                             onPlay = play,
-                            onBench = { bench = true },
                             onSettings = { settings = true },
                             Modifier.padding(padding),
                         )

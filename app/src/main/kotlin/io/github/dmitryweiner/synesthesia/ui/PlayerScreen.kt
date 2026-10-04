@@ -2,6 +2,7 @@ package io.github.dmitryweiner.synesthesia.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,8 +10,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
@@ -32,14 +35,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.dmitryweiner.synesthesia.BuildConfig
+import io.github.dmitryweiner.synesthesia.R
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
 import io.github.dmitryweiner.synesthesia.core.SessionView
-import io.github.dmitryweiner.synesthesia.core.coreVersion
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
 
 /**
@@ -83,7 +87,6 @@ enum class ViewMode {
 fun PlayerScreen(
     controller: PlaybackController,
     onPlay: () -> Unit,
-    onBench: () -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -136,7 +139,6 @@ fun PlayerScreen(
                 onPoints = { pointsOpen = true },
                 onSettings = onSettings,
                 onKeep = { naming = true },
-                onBench = onBench,
                 onSaid = { said = it },
                 controller = controller,
             )
@@ -193,8 +195,9 @@ fun PlayerScreen(
  *
  * The name shared the line at first and lost: it is the longest thing on the
  * screen and the buttons are the widest, so "Candle glaze · 3 steps" came out
- * as "Cand…" even on a large phone. It has the full width now; what is
- * squeezed instead is the version, which nobody reads twice.
+ * as "Cand…" even on a large phone. It has the full width now, and the
+ * app's own mark stands where the version number used to — a build number is
+ * in the APK and in the release it came from, which is where it is read.
  */
 @Composable
 private fun Header(
@@ -202,47 +205,37 @@ private fun Header(
     onPoints: () -> Unit,
     onSettings: () -> Unit,
     onKeep: () -> Unit,
-    onBench: () -> Unit,
     onSaid: (String) -> Unit,
     controller: PlaybackController,
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "${BuildConfig.VERSION_NAME} · core ${remember { coreVersion() }}",
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Image(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = stringResource(R.string.app_name),
+                modifier = Modifier.size(40.dp).testTag("logo"),
             )
+            Spacer(Modifier.weight(1f))
             TextButton(onClick = onPoints, modifier = Modifier.testTag("points")) { Text("Points") }
             TextButton(onClick = onSettings, modifier = Modifier.testTag("openSettings")) { Text("⚙") }
             TextButton(onClick = onKeep, modifier = Modifier.testTag("keepPoint")) { Text("💾") }
-            MoreMenu(controller, playing = state.playing, onBench = onBench, onSaid = onSaid)
+            MoreMenu(controller, onSaid = onSaid)
         }
         Text(
             state.session.name,
             Modifier.fillMaxWidth().clickable(onClick = onPoints).testTag("openPoints"),
-            style = MaterialTheme.typography.titleLarge,
+            // A fifth smaller than a title: it is the longest line on the
+            // screen and it is read, not announced.
+            style = MaterialTheme.typography.titleLarge.let { it.copy(fontSize = it.fontSize * 0.8f) },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
-/**
- * What is wanted rarely: the tokens a point travels as (PLAN.md decision 8)
- * and the bench. The bench renders every point offline as fast as it can, so
- * it waits for the sound to stop rather than fighting it for the cores — the
- * menu says so instead of leaving a grey button on the screen.
- */
+/** What is wanted rarely: the tokens a point travels as (PLAN.md decision 8). */
 @Composable
-private fun MoreMenu(
-    controller: PlaybackController,
-    playing: Boolean,
-    onBench: () -> Unit,
-    onSaid: (String) -> Unit,
-) {
+private fun MoreMenu(controller: PlaybackController, onSaid: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val clipboard = remember(context) { context.getSystemService(ClipboardManager::class.java) }
@@ -276,25 +269,6 @@ private fun MoreMenu(
                     open = false
                 },
                 modifier = Modifier.testTag("pasteToken"),
-            )
-            DropdownMenuItem(
-                text = {
-                    Column {
-                        Text("Bench: how fast each point renders")
-                        if (playing) {
-                            Text(
-                                "stop the sound first — it renders flat out",
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                    }
-                },
-                enabled = !playing,
-                onClick = {
-                    onBench()
-                    open = false
-                },
-                modifier = Modifier.testTag("openBench"),
             )
         }
     }
@@ -362,16 +336,23 @@ private fun Press(label: String, tag: String, modifier: Modifier, enabled: Boole
 }
 
 /**
- * What the last press did and what it changed (the core's two lines), how
- * many steps ↩ can still take back, and what the scout is up to — a phone
- * that is rendering candidates is a phone that is warm, so it says so.
+ * What the last press did, how many steps ↩ can still take back, and what the
+ * scout is up to — a phone that is rendering candidates is a phone that is
+ * warm, so it says so.
+ *
+ * Two lines, never one and never three: the core's status is two lines (what
+ * happened, and which genes moved), and letting it grow pushed the picture up
+ * and down on every press. Only the first line is shown, clipped rather than
+ * wrapped; what changed belongs on a page of its own.
  */
 @Composable
 private fun StatusLine(view: SessionView, scoutThreads: Int) {
-    Column(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(Modifier.fillMaxWidth().height(44.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
-            view.status.ifEmpty { "👍 when you like where it is going, 👎 when you don't" },
+            view.status.substringBefore('\n').ifEmpty { "👍 when you like where it is going, 👎 when you don't" },
             style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.testTag("status"),
         )
         Text(
@@ -385,6 +366,8 @@ private fun StatusLine(view: SessionView, scoutThreads: Int) {
                 if (view.canUndo) append(" · ↩ ${view.undoDepth}")
             },
             style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -102,8 +102,7 @@ app/                  the application (Compose)
   ui/                 PlayerScreen (the picture, the presses, the status),
                       Picture (the view in Compose), Points (the sheet, 💾,
                       the token), SettingsScreen (generated from the schema),
-                      Meters, BenchScreen
-  bench/              Bench: offline render speed per preset
+                      Meters (the spectrogram and the feature bars)
 app/debug.keystore    the shared debug key; never replace it
 scripts/              check.sh, setup-android-sdk.sh, sync-shaders.sh,
                       release-apk.sh, android-test-failures.sh (CI)

@@ -201,10 +201,13 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
     not built for cannot install it. compileSdk and targetSdk are 37: the
     Compose libraries of BOM 2026.09 refuse to build against less.
 12. **Measure first** — carried over verbatim. Every performance claim comes
-    from a checked-in bench: render speed per preset on the device,
-    underruns, GL frame time per rung, scout wall time and energy. CI runs
-    `cargo test` for the core crates and the JVM tests; the device numbers
-    are written down here with a date.
+    from a number taken on the device: `core %` and underruns on the screen,
+    the scout's wall time on the status line, the rung the picture's probe
+    settles at. CI runs `cargo test` for the core crates and the JVM tests;
+    the device numbers are written down here with a date. *(The app's own
+    bench screen was dropped on 2026-10-04 at the user's judgement — see
+    phase 6; `syn_player::render_stats` is still the core's offline
+    measurement, and its tests use it.)*
 
 ## Architecture
 
@@ -258,8 +261,8 @@ app/                  the application (Kotlin, Compose)
   src/main/.../audio     AudioOutput (AudioTrack + thread), PlayedClock
   src/main/.../playback  PlaybackController (the core's Session, the clock,
                          the scout's thread), PlaybackService
-  src/main/.../ui        PlayerScreen, Meters, BenchScreen
-  src/main/.../bench     Bench (offline render speed per preset)
+  src/main/.../ui        PlayerScreen, Picture, Points, SettingsScreen,
+                         Meters (the spectrogram and the feature bars)
   src/main/.../gl        programs, ping-pong targets, the seven passes,
                          the GL surface and the quality rung
   src/main/.../store     last point, points, settings, tokens      (phase 4)

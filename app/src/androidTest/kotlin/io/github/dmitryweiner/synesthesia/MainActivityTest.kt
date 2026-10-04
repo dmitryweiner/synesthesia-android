@@ -76,6 +76,12 @@ class MainActivityTest {
     }
 
     @Test
+    fun theHeaderShowsTheAppsMarkRatherThanItsVersion() {
+        compose.onNodeWithTag("logo").assertIsDisplayed()
+        compose.onNodeWithText("core 0.1.0", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun thePointsNameHasALineOfItsOwn() {
         // It is the longest thing on the screen; sharing a line with the
         // buttons left "Candle glaze · 3 steps" as "Cand…".
@@ -122,14 +128,24 @@ class MainActivityTest {
     }
 
     @Test
-    fun theTokensAndTheBenchAreUnderTheHeadersMenu() {
+    fun theTokensAreUnderTheHeadersMenu() {
         compose.onNodeWithTag("more").performClick()
         compose.onNodeWithTag("copyToken").assertIsDisplayed()
         compose.onNodeWithTag("pasteToken").assertIsDisplayed()
-        // The bench says why it waits rather than greying out unexplained.
-        compose.onNodeWithTag("openBench").assertIsDisplayed()
         compose.onNodeWithTag("copyToken").performClick()
         compose.onNodeWithText("The point is on the clipboard, as a #s= token").assertExists()
+    }
+
+    @Test
+    fun aPressDoesNotMoveWhatIsAboveIt() {
+        // The status line is two lines whatever it says: when it grew, the
+        // picture was pushed up and down on every press.
+        val before = compose.onNodeWithTag("status").fetchSemanticsNode().size
+        val picture = compose.onNodeWithTag("picture").fetchSemanticsNode().size
+        compose.onNodeWithTag("like").performClick()
+        compose.onNodeWithTag("surprise").performClick()
+        assertEquals(before, compose.onNodeWithTag("status").fetchSemanticsNode().size)
+        assertEquals(picture, compose.onNodeWithTag("picture").fetchSemanticsNode().size)
     }
 
     @Test

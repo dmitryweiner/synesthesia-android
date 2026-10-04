@@ -88,8 +88,11 @@ app/                  the application (Compose)
                       (RG16F ping-pong), SimRenderer (the seven passes),
                       PictureView (the GL surface, the rung, the finger),
                       CpuPictureView (the fallback: the core draws, this blits)
+  store/              PointFiles: last-point.json and points.json, written
+                      atomically off the main thread
   ui/                 PlayerScreen (the picture, the presses, the status),
-                      Picture (the view in Compose), Meters, BenchScreen
+                      Picture (the view in Compose), Points (the sheet, 💾,
+                      the token), Meters, BenchScreen
   bench/              Bench: offline render speed per preset
 app/debug.keystore    the shared debug key; never replace it
 scripts/              check.sh, setup-android-sdk.sh, sync-shaders.sh,

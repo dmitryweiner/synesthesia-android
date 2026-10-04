@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -35,6 +36,34 @@ class MainActivityTest {
         // The current point's name is in the header and in the list.
         compose.onAllNodesWithText("Fractal garden").onFirst().assertExists()
         compose.onNodeWithText("▶ Play").assertExists()
+    }
+
+    @Test
+    fun aPointIsKeptUnderANameAndOpensFromTheSheet() {
+        val app = compose.activity.application as SynesthesiaApp
+        val playback = app.playback
+        val before = playback.points.count()
+
+        // 💾 offers a name and keeps the point under it.
+        compose.onNodeWithTag("keepPoint").performClick()
+        compose.onNodeWithTag("name").assertExists()
+        compose.onNodeWithTag("keep").performClick()
+        assertEquals(before + 1u, playback.points.count())
+        val kept = playback.points.nameAt(before) ?: error("the kept point")
+        // The title is the name it was kept under.
+        compose.onAllNodesWithText(kept).onFirst().assertExists()
+
+        // It is in the sheet, under "My points", and opens from there.
+        compose.onNodeWithTag("openPoints").performClick()
+        compose.onNodeWithText("My points").assertExists()
+        compose.onAllNodesWithText(kept).onFirst().performClick()
+        compose.onAllNodesWithText(kept).onFirst().assertExists()
+
+        // And it can be forgotten again.
+        compose.onNodeWithTag("openPoints").performClick()
+        compose.onAllNodesWithText("Forget").onFirst().performClick()
+        compose.onAllNodesWithText("Forget").onFirst().performClick()
+        assertEquals(before, playback.points.count())
     }
 
     @Test

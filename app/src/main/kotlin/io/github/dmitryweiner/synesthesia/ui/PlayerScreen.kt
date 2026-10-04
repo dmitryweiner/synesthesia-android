@@ -7,11 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,18 +32,18 @@ import io.github.dmitryweiner.synesthesia.core.coreVersion
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
 
 /**
- * The player (PLAN.md phases 1–3): the picture, the point's name with its
- * step count, ▶, and 👍 👎 🎲 ↩ with the status line that says what the last
- * press did. A finger on the picture paints into it.
- *
- * The built-in points are a row of chips for now; *My points* and the bottom
- * sheet decision 9 describes are phase 4's, with the storage they need.
+ * The player (PLAN.md phases 1–4): the picture, the point's name with its
+ * step count, ▶, 💾, the points sheet, and 👍 👎 🎲 ↩ with the status line
+ * that says what the last press did. A finger on the picture paints into it.
  */
 @Composable
 fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: () -> Unit, modifier: Modifier = Modifier) {
     val state by controller.state.collectAsStateWithLifecycle()
     var frame by remember { mutableStateOf<AudioFrame?>(null) }
     var stats by remember { mutableStateOf<OutputStats?>(null) }
+    var pointsOpen by remember { mutableStateOf(false) }
+    var naming by remember { mutableStateOf(false) }
+    var said by remember { mutableStateOf<String?>(null) }
 
     // The meters follow the *played* sound, once per screen frame.
     LaunchedEffect(state.playing) {
@@ -73,6 +70,8 @@ fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: ()
                 )
                 Text("core ${remember { coreVersion() }}", style = MaterialTheme.typography.labelSmall)
             }
+            TextButton(onClick = { naming = true }, modifier = Modifier.testTag("keepPoint")) { Text("💾") }
+            TextButton(onClick = { pointsOpen = true }, modifier = Modifier.testTag("openPoints")) { Text("Points") }
             TextButton(onClick = onBench, enabled = !state.playing) { Text("Bench") }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -92,32 +91,20 @@ fun PlayerScreen(controller: PlaybackController, onPlay: () -> Unit, onBench: ()
             )
         }
         state.message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        said?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         Picture(controller, Modifier.weight(1f).fillMaxWidth())
         Meters(frame, Modifier.fillMaxWidth())
         StatsLine(stats)
         SearchBar(controller, state.session)
         StatusLine(state.session, remember { controller.scoutThreads() })
-        Points(controller, state.session)
+        TokenRow(controller, onSaid = { said = it }, Modifier.padding(bottom = 8.dp))
     }
-}
 
-/** The built-in points, tap to load one: a fresh search and a new picture. */
-@Composable
-private fun Points(controller: PlaybackController, view: SessionView) {
-    LazyRow(
-        Modifier.fillMaxWidth().padding(bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        itemsIndexed(controller.presets, key = { _, p -> p.index.toInt() }) { i, p ->
-            // A built-in point is "the one playing" only until a press makes
-            // the point the user's own.
-            val selected = view.steps == 0u && view.pointName == p.name
-            FilterChip(
-                selected = selected,
-                onClick = { controller.select(i) },
-                label = { Text(p.name, maxLines = 1) },
-            )
-        }
+    if (pointsOpen) {
+        PointsSheet(controller, state.session, onDismiss = { pointsOpen = false })
+    }
+    if (naming) {
+        KeepDialog(controller, onDismiss = { naming = false })
     }
 }
 

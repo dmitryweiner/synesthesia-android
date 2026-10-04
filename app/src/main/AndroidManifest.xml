@@ -23,6 +23,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!--
+              A link to the web app opens the point here (PLAN.md decision 8).
+              Not autoVerify: this app is not the web app's owner, so Android
+              offers the choice rather than taking the link over. What the link
+              carries is read by the core (`point_from_link`); a point kept on
+              the web app's server cannot be fetched (no network), and the app
+              says so.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                    android:host="dmitryweiner.github.io"
+                    android:pathPrefix="/synesthesia" />
+            </intent-filter>
         </activity>
 
         <service

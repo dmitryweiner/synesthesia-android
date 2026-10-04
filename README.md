@@ -21,7 +21,10 @@ while you listen the core renders and scores candidates in the background
 so that the next press takes the best one it found. The notification
 carries 👎 ⏹ 👍, so the search runs with the phone locked. **The picture is
 on screen** as of phase 3: the web app's own seven shaders on OpenGL ES 3.0,
-driven by the sound that is being heard, and a finger paints into it.
+driven by the sound that is being heard, and a finger paints into it. Points
+are kept under the names you give them and come back on the next start
+(phase 4), and a point travels to and from the web app as a `#s=` token or a
+link — locally, with no account and no network.
 
 ## Trying it on a phone
 

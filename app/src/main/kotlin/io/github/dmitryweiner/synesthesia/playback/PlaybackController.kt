@@ -10,11 +10,15 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.util.Log
 import androidx.annotation.MainThread
 import io.github.dmitryweiner.synesthesia.audio.AudioOutput
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
+import io.github.dmitryweiner.synesthesia.core.CoreException
+import io.github.dmitryweiner.synesthesia.core.LinkPoint
 import io.github.dmitryweiner.synesthesia.core.PictureDriver
+import io.github.dmitryweiner.synesthesia.core.PointList
 import io.github.dmitryweiner.synesthesia.core.PresetInfo
 import io.github.dmitryweiner.synesthesia.core.Session
 import io.github.dmitryweiner.synesthesia.core.SessionConfig
@@ -22,8 +26,12 @@ import io.github.dmitryweiner.synesthesia.core.SessionEffect
 import io.github.dmitryweiner.synesthesia.core.SessionView
 import io.github.dmitryweiner.synesthesia.core.SoundPlayer
 import io.github.dmitryweiner.synesthesia.core.defaultSessionConfig
+import io.github.dmitryweiner.synesthesia.core.pointFromLink
+import io.github.dmitryweiner.synesthesia.core.pointFromToken
+import io.github.dmitryweiner.synesthesia.core.pointToken
 import io.github.dmitryweiner.synesthesia.core.presets
 import io.github.dmitryweiner.synesthesia.gl.PictureSource
+import io.github.dmitryweiner.synesthesia.store.PointFiles
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,13 +85,21 @@ class PlaybackController(
     val sampleRate: Int =
         audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 48_000
 
+    /** The point files, in the app's own directory (PLAN.md decision 7). */
+    private val files = PointFiles(context.filesDir)
+
     /**
-     * A session on the first built-in point, with its own seed, so two runs of
-     * the app do not explore the same way. (Phase 4 restores the last point
-     * instead of starting here.)
+     * The points the user kept. The core holds the list and its rules; this
+     * class writes the file whenever the list changes.
      */
-    private val session: Session =
-        Session.onPreset(0u, config.copy(seed = System.nanoTime().toUInt()))
+    val points: PointList = loadPoints(files)
+
+    /**
+     * A session on the point the app was last left on, or on the first
+     * built-in one, with its own seed, so two runs of the app do not explore
+     * the same way.
+     */
+    private val session: Session = startSession(files, config.copy(seed = System.nanoTime().toUInt()))
 
     /**
      * The picture's per-frame driver (PLAN.md decision 4). It holds the point
@@ -155,6 +171,80 @@ class PlaybackController(
         applyEffects(session.loadPreset(now(), index.toUInt()))
     }
 
+    /** The name to offer for 💾: the user's own name again, or a fresh one. */
+    fun suggestedName(): String = points.suggestName(session.view().pointName.takeIf { session.view().steps == 0u })
+
+    /**
+     * 💾 Keeps the point under `name`, replacing one of the same name. The
+     * point becomes the user's own, named one — the title says so.
+     */
+    fun keep(name: String) {
+        val clean = name.trim().ifEmpty { suggestedName() }
+        try {
+            points.keep(clean, session.pointJson())
+        } catch (e: CoreException) {
+            _state.update { it.copy(message = "Could not keep the point: ${e.message}") }
+            return
+        }
+        files.savePoints(points.toJson())
+        applyEffects(session.keptAs(clean))
+    }
+
+    /** Loads a kept point: a fresh search, a hard switch, a new picture. */
+    fun open(index: Int) {
+        val json = points.pointJson(index.toUInt()) ?: return
+        val name = points.nameAt(index.toUInt()) ?: ""
+        applyEffects(session.load(now(), name, json))
+    }
+
+    /** Forgets a kept point. What is playing keeps playing. */
+    fun forget(index: Int) {
+        if (!points.forget(index.toUInt())) return
+        files.savePoints(points.toJson())
+        _state.update { it.copy(session = session.view()) }
+    }
+
+    /** The point as the web app's `#s=` token, to paste into a browser. */
+    fun token(): String = pointToken(session.pointJson())
+
+    /**
+     * A point pasted from a browser: a token, or the whole link it was in.
+     * Says what happened, for the status line.
+     */
+    fun importToken(text: String): String {
+        val json = try {
+            pointFromToken(text)
+        } catch (e: CoreException) {
+            return "That is not a point token"
+        }
+        applyEffects(session.load(now(), "", json))
+        return "Opened the pasted point"
+    }
+
+    /**
+     * The web app's URL, handed over by the system. A link to a point kept on
+     * its server cannot be opened here — there is no network (decision 8) —
+     * and says so.
+     */
+    fun openLink(url: String): String? = when (val target = pointFromLink(url)) {
+        is LinkPoint.Point -> {
+            applyEffects(session.load(now(), "", target.pointJson))
+            "Opened the point from the link"
+        }
+        is LinkPoint.Preset -> {
+            val index = target.index.toInt()
+            if (index in presets.indices) {
+                select(index)
+                "Opened ${presets[index].name}"
+            } else {
+                "That link asks for a point this app does not have"
+            }
+        }
+        is LinkPoint.NeedsTheWebApp ->
+            "That link points at a saved point on the web app, which this app cannot fetch"
+        LinkPoint.Nothing -> null
+    }
+
     fun toggle() = if (_state.value.holdsForeground) stop() else play()
 
     fun play() {
@@ -196,6 +286,11 @@ class PlaybackController(
 
     fun stats(): OutputStats? = output?.stats()
 
+    /** Puts a line in front of the user — what a link did, or what went wrong. */
+    fun say(message: String) {
+        _state.update { it.copy(message = message) }
+    }
+
     /** Threads the scout renders on — for the bench and the details page. */
     fun scoutThreads(): Int = session.scoutThreads().toInt()
 
@@ -234,8 +329,9 @@ class PlaybackController(
                 // The picture starts over from a fresh seed, on the GL thread
                 // (it is the one that can draw the spots).
                 SessionEffect.Reseed -> reseedPending.set(true)
-                // Phase 4: last-point.json in filesDir.
-                is SessionEffect.SaveLastPoint -> Unit
+                // The point to come back to, through a temporary file on a
+                // thread of its own (PointFiles).
+                is SessionEffect.SaveLastPoint -> files.saveLastPoint(effect.pointJson)
                 // Seconds of rendering, off this thread. A result for a point
                 // the user has left is dropped by the session, by its version.
                 SessionEffect.StartScout -> scouts.execute {
@@ -347,5 +443,36 @@ class PlaybackController(
          * twice as often and no more.
          */
         const val TICK_MS = 25L
+
+        private const val TAG = "SynPlayback"
+
+        /**
+         * The kept points. A file that cannot be read is kept, not
+         * overwritten: an empty list is written back only once the user keeps
+         * something, and until then the file is still there to be rescued.
+         */
+        fun loadPoints(files: PointFiles): PointList {
+            val json = files.points() ?: return PointList()
+            return try {
+                PointList.parse(json)
+            } catch (e: CoreException) {
+                Log.w(TAG, "the points file is not readable; starting with none", e)
+                PointList()
+            }
+        }
+
+        /** Where the app was left, or the first built-in point. */
+        fun startSession(files: PointFiles, config: SessionConfig): Session {
+            val json = files.lastPoint()
+            if (json != null) {
+                try {
+                    // The point carries its own name, so "" takes it.
+                    return Session("", json, config)
+                } catch (e: CoreException) {
+                    Log.w(TAG, "the last point is not readable; starting from the first", e)
+                }
+            }
+            return Session.onPreset(0u, config)
+        }
     }
 }

@@ -21,13 +21,13 @@ in Russian — the same rule as the sibling projects.
 | 1 | Sound, in the background | ✅ done 2026-10-03, plays on a phone with the screen off; numbers still to take (see phase 1) |
 | 2 | Session: 👍 👎 🎲 ↩, the morph, the scout | ✅ done; listened to on a phone 2026-10-04 |
 | 3 | Picture (GLES 3.0) | ✅ done; looked at on a phone 2026-10-04 |
-| 4 | Points and tokens | ⏭ **next** |
-| 5 | Settings | — |
+| 4 | Points and tokens | ✅ built 2026-10-04; to be tried on a phone (see phase 4) |
+| 5 | Settings | ⏭ **next** |
 | 6 | Polish | — |
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`6d3b151`); this repository, `main` (phases 0 and 1 merged on
+`1d6d9e1`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
 
 ## What the two existing ports teach
@@ -469,11 +469,50 @@ copied into this repository.
    - the numbers (decision 12): the frame rate it settles at and which rung
      it picks, and whether `core %` or underruns move once the picture is
      running (the second half of the crackle report from phase 2).
-4. ⏭ **Points and tokens (next).** Last point restored; 💾 with a name; *My points*;
+4. ✅ **Points and tokens.** Last point restored; 💾 with a name; *My points*;
    export a `#s=` token, import one from the clipboard or an opened link.
-   The points list model (decision 2) moves into `syn-session` here, with the
-   storage it needs: phase 2 emits `SaveLastPoint` and nothing listens yet.
-5. **Settings.** The two-tab page generated from the schema; sound edits
+   **Built 2026-10-04:**
+   - Core: `syn_session::points` — the kept list and its file. The file is
+     the console's (an array of `{name, state}`), so a point file written on
+     a laptop opens on a phone and the other way round (decision 7), and the
+     rules live with it: keeping a name twice replaces that point rather than
+     growing a second, and the name offered when saving is your own point's
+     name again (which overwrites it) or a fresh "Point N" — never a
+     built-in's name, since a copy that looks exactly like the built-in reads
+     as "it didn't save". `Session::kept_as` makes a kept point the user's
+     own: the title says the name, the steps start again from it, and the
+     search is untouched so ↩ still walks back.
+   - Core: `share::parse_launch`, the web app's `parseLaunch` — a stored id
+     beats a token, a token beats a preset number. A `?presetId=` link is
+     reported as needing the web app: there is no network here (decision 8),
+     so the app says so rather than opening something else.
+   - Through the FFI: `PointList`, `point_token`, `point_from_token`,
+     `point_from_link`.
+   - `store/PointFiles`: `last-point.json` and `points.json` in the app's
+     files, written through a temporary file and a rename (an interrupted save
+     cannot leave half a point) on a thread of its own — the last point is
+     written every time a change settles, and the main thread has a picture to
+     draw. Nothing in it knows what is inside the files: the core parses and
+     formats, this moves text to and from the disk.
+   - The app starts on the point it was left on; a points file that cannot be
+     read is **kept**, not overwritten, and the app starts with none so the
+     file is still there to be rescued.
+   - The screen: 💾 (a name dialog, prefilled with what the core suggests),
+     *Points* (a sheet with *My points* — tap to open, Forget to drop, with a
+     confirmation — and the built-in ones), and Copy/Paste token through the
+     system clipboard, which is what a browser reads and writes.
+   - A link to the web app opens the point here (an intent filter, not
+     `autoVerify`: this app is not that site's owner, so Android offers the
+     choice).
+   - Tests: 7 more host tests in the core and 4 JVM through the real
+     bindings; on a device: the files' round trip and that no temporary is
+     left behind, that an empty or missing file is simply no points, that the
+     app restores the point it was left on, and that 💾 → the sheet → Forget
+     works on the screen.
+   **On a phone (to be done by the user):** keep a point and find it after a
+   restart; copy a token, open the web app, paste it into the address bar and
+   hear the same point; share a link from the web app and open it here.
+5. ⏭ **Settings (next).** The two-tab page generated from the schema; sound edits
    heard as made; the picture paused while open; close = one undoable step.
 6. **Polish.** Details, help, the bench numbers written into this file, and
    **the small UI fixes the user has been collecting while using the app**

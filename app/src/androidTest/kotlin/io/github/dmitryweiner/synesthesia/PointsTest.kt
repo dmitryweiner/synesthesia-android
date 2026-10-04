@@ -1,0 +1,107 @@
+package io.github.dmitryweiner.synesthesia
+
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import io.github.dmitryweiner.synesthesia.core.PointList
+import io.github.dmitryweiner.synesthesia.core.pointToken
+import io.github.dmitryweiner.synesthesia.core.presetStateJson
+import io.github.dmitryweiner.synesthesia.store.PointFiles
+import java.io.File
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * The point files on a device (PLAN.md decision 7): that what the app writes
+ * is what the console writes, that it comes back, and that an interrupted or
+ * unreadable file does not take the points with it.
+ */
+@RunWith(AndroidJUnit4::class)
+class PointsTest {
+    private val context = ApplicationProvider.getApplicationContext<Context>()
+    private lateinit var dir: File
+    private lateinit var files: PointFiles
+
+    @Before
+    fun aDirectoryOfItsOwn() {
+        dir = File(context.cacheDir, "points-test-${System.nanoTime()}")
+        dir.mkdirs()
+        files = PointFiles(dir)
+    }
+
+    @After
+    fun tidyUp() {
+        dir.deleteRecursively()
+    }
+
+    @Test
+    fun theLastPointComesBackAndTheFileIsTheWebAppsJson() {
+        assertNull("nothing to come back to yet", files.lastPoint())
+        val point = requireNotNull(presetStateJson(6u))
+        files.saveLastPoint(point)
+        assertTrue("the write finished", files.awaitWrites(5_000))
+
+        assertEquals(point, files.lastPoint())
+        val onDisk = File(dir, "last-point.json")
+        assertTrue("named as the console names it", onDisk.exists())
+        assertTrue(onDisk.readText().contains("\"presetName\""))
+        assertTrue("no temporary left behind", dir.listFiles()!!.none { it.name.endsWith(".tmp") })
+    }
+
+    @Test
+    fun keptPointsSurviveTheirFile() {
+        val list = PointList()
+        list.keep("Dawn", requireNotNull(presetStateJson(1u)))
+        list.keep("Dusk", requireNotNull(presetStateJson(9u)))
+        files.savePoints(list.toJson())
+        assertTrue(files.awaitWrites(5_000))
+
+        val back = PointList.parse(requireNotNull(files.points()))
+        assertEquals(listOf("Dawn", "Dusk"), back.names())
+        // And the point in it is a point the app can open.
+        val json = requireNotNull(back.pointJson(1u))
+        assertEquals(json, io.github.dmitryweiner.synesthesia.core.pointFromToken(pointToken(json)))
+    }
+
+    @Test
+    fun anEmptyOrMissingFileIsSimplyNoPoints() {
+        assertNull(files.points())
+        File(dir, "points.json").writeText("   ")
+        assertNull("whitespace is nothing", files.points())
+        File(dir, "points.json").writeText("[]")
+        assertEquals(0u, PointList.parse(requireNotNull(files.points())).count())
+    }
+
+    @Test
+    fun theAppRestoresThePointItWasLeftOn() {
+        // The app's own files, not the test's: this is the path the real
+        // startup takes (PlaybackController reads them in its constructor).
+        val playback = (context as SynesthesiaApp).playback
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.runOnMainSync { playback.select(4) }
+        val name = playback.presets[4].name
+        assertEquals(name, playback.state.value.session.pointName)
+
+        // A load settles at once, so the last point is written by now.
+        val appFiles = PointFiles(context.filesDir)
+        waitFor("the last point to reach the disk") {
+            appFiles.lastPoint()?.contains("\"presetName\":\"$name\"") == true
+        }
+        assertNotNull(appFiles.lastPoint())
+    }
+
+    private fun waitFor(what: String, timeoutMs: Long = 5_000, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (!condition()) {
+            check(System.currentTimeMillis() < deadline) { "timed out waiting for $what" }
+            Thread.sleep(50)
+        }
+    }
+}

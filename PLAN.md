@@ -539,8 +539,8 @@ copied into this repository.
      left behind, that an empty or missing file is simply no points, that the
      app restores the point it was left on, and that 💾 → the sheet → Forget
      works on the screen.
-   **On a phone (to be done by the user):** keep a point and find it after a
-   restart; copy a token, open the web app, paste it into the address bar and
+   **On a phone (to be done by the user, from the newest release):** keep a
+   point and find it after a restart; copy a token, open the web app, paste it into the address bar and
    hear the same point; share a link from the web app and open it here.
 5. ✅ **Settings.** The two-tab page generated from the schema; sound edits
    heard as made; the picture paused while open; close = one undoable step.

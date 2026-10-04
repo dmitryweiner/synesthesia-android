@@ -30,10 +30,16 @@ schema: when the model grows a parameter, the page grows with it.
 
 ## Trying it on a phone
 
-Every CI run on GitHub (Actions → *check* → the run) has the debug build as
-the artifact **app-debug**: arm64 phones and the x86_64 emulator, Android
-8.0+. Unzip it, open the APK on the phone and allow installing from that
-source. Every debug build is signed with the same key
+Every commit on `main` is published as a
+[release](https://github.com/dmitryweiner/synesthesia-android/releases):
+download `synesthesia-<version>.apk`, open it on the phone and allow
+installing from that source. arm64 phones and the x86_64 emulator, Android
+8.0+. (Each CI run also keeps the same APK as the workflow artifact
+**app-debug**, until GitHub expires it.)
+
+The version is the number of commits behind it — `0.1.42` is the
+forty-second — and the app shows it in its header, so a build can always be
+traced back to what made it. Every build is signed with the same debug key
 (`app/debug.keystore`), so a newer one installs over the older one.
 
 ## Building

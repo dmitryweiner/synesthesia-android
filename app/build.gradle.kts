@@ -3,6 +3,21 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+/**
+ * Every commit is a build: the patch number is how many commits the branch
+ * has. Nothing is bumped by hand, `versionCode` only ever grows, and an APK
+ * can be traced back to the commit that made it (`git rev-list --count`).
+ *
+ * CI must check out with `fetch-depth: 0`, or the count is the depth of the
+ * clone rather than the history; a build outside a git checkout gets 1.
+ */
+val commitCount: Int = runCatching {
+    providers.exec {
+        commandLine("git", "rev-list", "--count", "HEAD")
+        isIgnoreExitValue = true
+    }.standardOutput.asText.get().trim().toInt()
+}.getOrDefault(0).coerceAtLeast(1)
+
 android {
     namespace = "io.github.dmitryweiner.synesthesia"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -11,8 +26,8 @@ android {
         applicationId = "io.github.dmitryweiner.synesthesia"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = commitCount
+        versionName = "0.1.$commitCount"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Only the ABIs the Rust core is built for (core/build.gradle.kts).
@@ -50,6 +65,9 @@ android {
 
     buildFeatures {
         compose = true
+        // So the screen can say which build it is, which is the point of a
+        // version per commit.
+        buildConfig = true
     }
 }
 

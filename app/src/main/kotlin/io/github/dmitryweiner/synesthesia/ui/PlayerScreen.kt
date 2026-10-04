@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.dmitryweiner.synesthesia.BuildConfig
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
 import io.github.dmitryweiner.synesthesia.core.SessionView
@@ -191,7 +192,10 @@ private fun Header(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text("core ${remember { coreVersion() }} · tap for points", style = MaterialTheme.typography.labelSmall)
+            Text(
+                "${BuildConfig.VERSION_NAME} · core ${remember { coreVersion() }} · tap for points",
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
         TextButton(onClick = onCycleView, modifier = Modifier.testTag("viewMode")) { Text(view.label) }
         TextButton(onClick = onSettings, modifier = Modifier.testTag("openSettings")) { Text("⚙") }

@@ -171,7 +171,10 @@ class PictureTest {
             val frame = driver.frame(t, null, sim.aspect)
             sim.step(frame)
             sim.draw(frame, pixels, pixels)
-            gpu = flipRows(readPixels(pixels), pixels)
+            // Both start at the field's row 0: glReadPixels hands back the
+            // row at `uv.y = 0` first, and that is the row the CPU picture's
+            // own first row draws.
+            gpu = readPixels(pixels)
             cpu = requireNotNull(driver.cpuFrame()) { "the CPU picture" }
         }
         assertEquals(cpu.size, gpu.size)
@@ -214,16 +217,6 @@ class PictureTest {
         val out = ByteArray(side * side * 4)
         buffer.rewind()
         buffer.get(out)
-        return out
-    }
-
-    /** glReadPixels hands back the bottom row first; a picture's is the top. */
-    private fun flipRows(pixels: ByteArray, side: Int): ByteArray {
-        val out = ByteArray(pixels.size)
-        val stride = side * 4
-        for (y in 0 until side) {
-            System.arraycopy(pixels, y * stride, out, (side - 1 - y) * stride, stride)
-        }
         return out
     }
 

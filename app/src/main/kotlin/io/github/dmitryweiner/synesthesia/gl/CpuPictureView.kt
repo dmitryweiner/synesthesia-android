@@ -73,8 +73,12 @@ class CpuPictureView(context: Context) : View(context) {
         val driver = source?.picture ?: return false
         if (width == 0 || height == 0) return false
         val x = (event.x / width).coerceIn(0f, 1f)
-        // The picture's rows run top to bottom; the field's UV is Y-up.
-        val y = (1f - event.y / height).coerceIn(0f, 1f)
+        // This picture's first row is the field's first row, so its screen
+        // runs the same way a view does — no flip, unlike the GL surface,
+        // whose fullscreen triangle makes it Y-up. The two paths show the
+        // field the same way up as their own renderer draws it; what matters
+        // is that a finger lands where it was put in each.
+        val y = (event.y / height).coerceIn(0f, 1f)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> driver.pointerDown(x, y, System.nanoTime() / 1e9)
             MotionEvent.ACTION_MOVE -> driver.pointerMoved(x, y)

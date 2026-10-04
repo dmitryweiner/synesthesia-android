@@ -7,9 +7,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -94,9 +94,13 @@ class MainActivityTest {
         compose.onNodeWithTag("fx.delayShimmer").assertExists()
         compose.onNodeWithTag("fx.delayOn").assertExists()
 
-        // Changing something and closing is one undoable step.
+        // Changing something and closing is one undoable step. The slider is
+        // set through its own semantics rather than by a swipe: a gesture's
+        // landing value is the layout's business, and this test is about the
+        // edit reaching the point.
         val steps = playback.state.value.session.steps
-        compose.onNodeWithTag("fx.delayShimmer").performTouchInput { swipeRight() }
+        compose.onNodeWithTag("fx.delayShimmer")
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(0.8f) }
         compose.onNodeWithTag("closeSettings").performClick()
         assertFalse(playback.state.value.settingsOpen)
         assertEquals(steps + 1u, playback.state.value.session.steps)

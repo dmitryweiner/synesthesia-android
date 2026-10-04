@@ -111,11 +111,12 @@ class SessionBindingsTest {
             } catch (e: CoreException.InvalidPoint) {
                 assertTrue(e.reason.isNotEmpty())
             }
+            val pastTheEnd = presets().size.toUInt()
             try {
-                session.loadPreset(0.0, 12u)
-                throw AssertionError("there is no preset 12")
+                session.loadPreset(0.0, pastTheEnd)
+                throw AssertionError("there is no preset $pastTheEnd")
             } catch (e: CoreException.NoSuchPreset) {
-                assertEquals(12u, e.index)
+                assertEquals(pastTheEnd, e.index)
             }
         }
     }

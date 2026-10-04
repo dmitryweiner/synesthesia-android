@@ -27,8 +27,38 @@ in Russian — the same rule as the sibling projects.
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`1d6d9e1`); this repository, `main` (phases 0 and 1 merged on
+`2bb7b87`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
+
+## Keeping up with the web app
+
+The web app is the specification, and it moves. **Checked 2026-10-04, at the
+user's asking: it had grown four things the model did not have**, and three
+presets that use them (*Overtone steppe*, *Candle glaze*, *Tanpura halo*) —
+so the app had 12 built-in points where the web app had 15:
+
+- the **tanpura**: four Karplus–Strong strings with the jawari buzz;
+- the **singing bowl**: inharmonic modes in beating pairs;
+- the delay's **octave-up shimmer**;
+- **pink** LFOs: 1/f wandering.
+
+All four are ported (synesthesia-core `2bb7b87`), the two new generators
+bit-identical to the TypeScript across the whole golden suite, and the dumps
+re-taken: 15 presets, 23 formulas, 250 genes, 69 takes.
+
+**The lesson, for next time: a re-dump alone is not a catch-up.** An unknown
+formula loads and then plays nothing (`enabled_formulas` filters by the
+schema) and an unknown FX key is dropped, so *Tanpura halo* would have opened
+and played without its tanpura — silently wrong, which is worse than absent.
+The model goes first, then the dumps. What to check when the web app has
+moved: the preset count, `schema.formulaIds`, the LFO shape list, and the FX
+keys.
+
+Two things this changed in the sound, both deliberate: the delay's loop is now
+two render quanta long rather than one (the shimmer worklet sits in the
+browser's feedback path whenever the delay is on, and the presets were tuned
+through it), and `delayShimmer` defaults to zero, so every point file and
+token written before it loads and sounds as it did.
 
 ## What the two existing ports teach
 

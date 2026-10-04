@@ -11,12 +11,27 @@ import org.junit.Test
  */
 class CoreBindingsTest {
     @Test
-    fun theTwelvePresetsComeFromTheCoreInTheWebAppsOrder() {
+    fun theBuiltInPointsComeFromTheCoreInTheWebAppsOrder() {
         val list = presets()
-        assertEquals(12, list.size)
-        assertEquals((0 until 12).toList(), list.map { it.index.toInt() })
+        assertEquals(15, list.size)
+        assertEquals(list.indices.toList(), list.map { it.index.toInt() })
         assertEquals("Fractal garden", list.first().name)
-        assertEquals("Subway basalt", list.last().name)
+        // The three the web app added last: they use the tanpura, the singing
+        // bowl, the delay's shimmer and the pink LFOs.
+        assertEquals(listOf("Overtone steppe", "Candle glaze", "Tanpura halo"), list.takeLast(3).map { it.name })
+    }
+
+    @Test
+    fun theNewInstrumentsAndTheShimmerArrivedWithThem() {
+        val halo = requireNotNull(presetStateJson(14u))
+        assertTrue("the tanpura is in Tanpura halo", halo.contains("\"tanpura\""))
+        assertTrue("and it is switched on", halo.contains("\"tanpura\":{\"enabled\":true"))
+        val schema = schemaJson()
+        for (id in listOf("tanpura", "bowl")) {
+            assertTrue("the schema knows $id", schema.contains("\"$id\""))
+        }
+        assertTrue("and the delay's shimmer", schema.contains("delayShimmer"))
+        assertTrue("and the pink LFO", schema.contains("\"pink\""))
     }
 
     @Test
@@ -25,7 +40,7 @@ class CoreBindingsTest {
         requireNotNull(json)
         assertTrue(json.contains("\"v\":1"))
         assertTrue(json.contains("\"presetName\":\"Fractal garden\""))
-        assertNull(presetStateJson(12u))
+        assertNull("past the end of the list", presetStateJson(presets().size.toUInt()))
     }
 
     @Test

@@ -36,7 +36,8 @@ names of the parameters in ⚙ — are the web app's, and those are English.
 
 ## Trying it on a phone
 
-Every commit on `main` is published as a
+Every commit on `main` whose tests pass — including the instrumented ones, on
+two emulators — is published as a
 [release](https://github.com/dmitryweiner/synesthesia-android/releases):
 download `synesthesia-<version>.apk`, open it on the phone and allow
 installing from that source. arm64 phones and the x86_64 emulator, Android

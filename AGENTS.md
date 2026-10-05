@@ -88,8 +88,9 @@ committing here.
     `12,0` — so assert that the number arrived, not how it is written.
 - **No build outputs in git.** Every commit on `main` becomes a GitHub
   **release** — `v<version>`, with `synesthesia-<version>.apk` attached
-  (`scripts/release-apk.sh`, run by CI) — and the same APK is the workflow
-  artifact `app-debug` until it expires. Debug builds are signed with
+  (`scripts/release-apk.sh`, run by CI's own `release` job once `check` *and*
+  both emulators are green, so nothing reaches a permanent URL untested) —
+  and the same APK is the workflow artifact `app-debug` until it expires. Debug builds are signed with
   `app/debug.keystore` so APKs from any run install over each other; never
   replace that key.
 - **The version counts commits**, it is not a number anyone types:

@@ -108,7 +108,12 @@ class SearchTest {
             assertEquals(0u, loaded.steps)
             assertTrue("a load clears the history", !loaded.canUndo)
 
-            waitFor("the sound to survive the switch", 10_000) { (frameNow() ?: 0.0) > 0.0 }
+            // A switch while playing hands the device from one player to the
+            // next, and the new one may only start once the old one is done
+            // with it: on an emulator whose audio is software that handover
+            // once took longer than ten seconds. The test is about the sound
+            // surviving, not about how fast.
+            waitFor("the sound to survive the switch", 20_000) { (frameNow() ?: 0.0) > 0.0 }
             onMain { playback.stop() }
             waitFor("service out of front") { !PlaybackService.isInForeground }
         }
@@ -136,8 +141,20 @@ class SearchTest {
     private fun waitFor(what: String, timeoutMs: Long = 5000, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (!condition()) {
-            check(System.currentTimeMillis() < deadline) { "timed out waiting for $what" }
+            check(System.currentTimeMillis() < deadline) { "timed out waiting for $what — ${stateNow()}" }
             Thread.sleep(50)
         }
+    }
+
+    /**
+     * What the app was doing when a wait ran out. Without this a timeout says
+     * only that the sound did not arrive, which cannot tell a slow emulator
+     * from a player that never started — and that is the whole question.
+     */
+    private fun stateNow(): String {
+        val state = playback.state.value
+        return "playing=${state.playing} foreground=${state.holdsForeground} " +
+            "pausedForFocus=${state.pausedForFocus} frame=${frameNow()} " +
+            "service=${PlaybackService.isInForeground} message=${state.message}"
     }
 }

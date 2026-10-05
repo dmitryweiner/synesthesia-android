@@ -19,6 +19,10 @@ scripts/check.sh               # after every change
 ./gradlew connectedDebugAndroidTest # instrumented tests, with a phone or emulator attached
 ```
 
+A **comment-only change in the core still costs a re-pin**: a new `rev` in
+`core/rust/Cargo.toml` rebuilds the Rust side here and in CI, so a wording
+fix there is best carried by the next real commit rather than pushed alone.
+
 **Developing against a local core checkout** (not committed — the file is
 in `.gitignore`):
 
@@ -56,6 +60,14 @@ committing here.
   stopped one `isDoneWithPlayer` — two threads must never render one player.
 - **Measure first**: performance claims come with a number from a bench,
   written into PLAN.md with a date.
+- **Break a claim before writing it down.** A line in these docs that says a
+  check catches something ("lint fails on a missing translation") is worth
+  only the once it was proved: make the mistake on purpose, watch the build
+  go red, put it back. The same goes for the premise under a test — read the
+  code that makes it true (a 👍 drops the point's name in
+  `syn-session`'s `after_action`, so the JSON has no `presetName`) rather
+  than remembering that it does. Two claims checked that way in this project
+  were wrong, and one of them was already in PLAN.md as a fact.
 - **A line the app says is a resource**, never a literal in Kotlin: add it to
   `app/src/main/res/values/strings.xml` and to all three translations (lint's
   `MissingTranslation` is an error, so a forgotten one fails `check.sh`).
@@ -63,6 +75,17 @@ committing here.
   not configuration-aware and Android lint rejects it — and capture what a
   lambda needs before the lambda. What the core computes is left as the core
   says it.
+  - **Hebrew is `values-iw`**, not `values-he` (as Indonesian would be `in`
+    and Yiddish `ji`): Android rewrites the modern code to the obsolete one
+    before looking a resource up (`ResourcesImpl.adjustLanguageTag`), so a
+    `values-he` folder is compiled, listed by `generateLocaleConfig`,
+    accepted by lint — and never read. androidx's own Hebrew is under `iw`;
+    `aapt2 dump resources` next to a library's string is how to check.
+  - **A test tag must not be made of a label.** `testTag("tab$title")` was
+    fine until the title became a resource; tags are the app's own names and
+    translating one breaks a test in a language nobody reads.
+  - **A number in a line is formatted in that language's way** — ru says
+    `12,0` — so assert that the number arrived, not how it is written.
 - **No build outputs in git.** Every commit on `main` becomes a GitHub
   **release** — `v<version>`, with `synesthesia-<version>.apk` attached
   (`scripts/release-apk.sh`, run by CI) — and the same APK is the workflow

@@ -75,8 +75,10 @@ class TranslationsTest {
             assertTrue(tag, r.getString(R.string.menu_version, "0.2.0").contains("0.2.0"))
             assertTrue(tag, r.getString(R.string.forget_title, "Dawn").contains("Dawn"))
             assertTrue(tag, r.getString(R.string.frame_stats, 7, 0.5, -1.2, 3.0).contains("7"))
+            // The decimal mark is the language's own — ru says 12,0 — so what
+            // is asserted is that the number arrived, not how it is written.
             val stats = r.getString(R.string.output_stats, 48_000, 20, 12.0, 30.0, 0)
-            assertTrue("$tag: $stats", stats.contains("48000") && stats.contains("12.0"))
+            assertTrue("$tag: $stats", stats.contains("48000") && stats.contains(Regex("12[.,]0")))
         }
     }
 

@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  עברית. המילים שהליבה מחשבת (שורת המצב אחרי לחיצה, שמות המקטעים והפרמטרים
+  עברית. The folder is values-iw, not values-he: Android converts "he" to the
+  obsolete "iw" before it looks a resource up (ResourcesImpl.adjustLanguageTag,
+  for the sake of releases before L), so a values-he folder is never read —
+  androidx's own Hebrew is under iw for the same reason. The device test is
+  what caught it: it asked for "he" and got English back. המילים שהליבה מחשבת (שורת המצב אחרי לחיצה, שמות המקטעים והפרמטרים
   ב-⚙, שמות הנקודות המוכנות) מגיעות מהסכמה של אפליקציית הווב ונשארות
   באנגלית — ראו values/strings.xml.
 -->

@@ -7,7 +7,7 @@ import android.util.Log
  * One GLSL program and the uniforms it takes, for the fullscreen passes the
  * picture is made of (PLAN.md decision 4).
  *
- * The fragment sources are the web app's, copied verbatim by
+ * The fragment sources are synesthesia-core's `shaders/`, copied verbatim by
  * `scripts/sync-shaders.sh` and written without `#version` / `precision`
  * lines so that `common.glsl` can be prepended to each — [compose] puts the
  * three together exactly as the web app's `composeFragmentShader` does.

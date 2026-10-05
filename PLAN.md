@@ -34,7 +34,15 @@ Where the code is: synesthesia-core `main` (the app pins it at
 
 ## Keeping up with the web app
 
-The web app is the specification, and it moves. **Checked 2026-10-04, at the
+**Since 2026-10-05 the direction is reversed** (synesthesia PLAN-CORE.md C2):
+synesthesia-core is the specification — presets, schema, gene list and
+shaders are edited there, the web app is being moved onto it, and a new
+preset or generator is made in the core first. Keeping up is now only
+bumping `rev` here, then `scripts/sync-shaders.sh` (which reads
+`../synesthesia-core/shaders`). What follows is the history of when the web
+app was the specification.
+
+The web app was the specification, and it moved. **Checked 2026-10-04, at the
 user's asking: it had grown four things the model did not have**, and three
 presets that use them (*Overtone steppe*, *Candle glaze*, *Tanpura halo*) —
 so the app had 12 built-in points where the web app had 15:
@@ -274,7 +282,7 @@ scripts/
   check.sh            rustfmt + clippy on core/rust; JVM tests, lint, APK
   setup-android-sdk.sh  SDK, NDK, Rust targets, cargo-ndk, local.properties
   android-test-failures.sh  failing instrumented tests with their traces (CI)
-  sync-shaders.sh     re-copies the shaders from ../synesthesia; --check
+  sync-shaders.sh     re-copies the shaders from ../synesthesia-core; --check
                       fails if a copy has drifted
 .github/workflows/check.yml  check (as scripts/check.sh) + emulator (API 26, 35)
 ```
@@ -442,9 +450,10 @@ copied into this repository.
    - Through the FFI: `PictureDriver.frame(now, sound, aspect)` → one
      `PictureFrame` of records named after the uniforms they fill, plus
      `backing_store`, `sim_grid`, `field_grid`, `quality_ladder`.
-   - The shaders are the web app's, **copied** by `scripts/sync-shaders.sh`
+   - The shaders are the core's (`synesthesia-core/shaders/`; the web
+     app's until 2026-10-05), **copied** by `scripts/sync-shaders.sh`
      (`--check` fails if a copy has drifted; `scripts/check.sh` runs it when
-     the web app is next door). They are GLSL ES 3.00 already, so they run
+     the core is next door). They are GLSL ES 3.00 already, so they run
      here verbatim.
    - `app/.../gl/`: `Program` (compile, link, cached uniform locations, the
      fullscreen triangle), `Targets` (RG16F ping-pong and the half-size field

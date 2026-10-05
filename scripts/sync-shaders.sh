@@ -1,21 +1,22 @@
 #!/bin/sh
-# Copies the picture's shaders from the web app, which is their only source
-# (PLAN.md: never re-type a shader). They are GLSL ES 3.00 already —
+# Copies the picture's shaders from synesthesia-core, which is their only
+# source (PLAN.md: never re-type a shader; they moved there from the web app
+# on 2026-10-05, synesthesia PLAN-CORE.md C10). They are GLSL ES 3.00 —
 # `#version 300 es`, texelFetch, float targets — so they run on OpenGL ES 3.0
-# here verbatim, and a diff against ../synesthesia is the whole of what keeps
-# the two pictures the same picture.
+# here verbatim, and a diff against the core is the whole of what keeps the
+# pictures of every app the same picture.
 #
 #   scripts/sync-shaders.sh          copy, and say what changed
 #   scripts/sync-shaders.sh --check  fail if a copy has drifted (CI)
 set -e
 cd "$(dirname "$0")/.."
 
-WEB=${SYNESTHESIA_WEB:-../synesthesia}
-FROM="$WEB/src/sim/shaders"
+CORE=${SYNESTHESIA_CORE:-../synesthesia-core}
+FROM="$CORE/shaders"
 TO=app/src/main/assets/shaders
 
 if [ ! -d "$FROM" ]; then
-  echo "sync-shaders: no web app at $WEB (set SYNESTHESIA_WEB)" >&2
+  echo "sync-shaders: no core at $CORE (set SYNESTHESIA_CORE)" >&2
   exit 1
 fi
 
@@ -28,7 +29,7 @@ for f in common.glsl seed.frag react.frag paramfield.frag velocity.frag advect.f
   fi
   if [ "$1" = "--check" ]; then
     if ! diff -q "$FROM/$f" "$TO/$f" >/dev/null 2>&1; then
-      echo "sync-shaders: $f has drifted from the web app:"
+      echo "sync-shaders: $f has drifted from the core:"
       diff -u "$TO/$f" "$FROM/$f" || true
       status=1
     fi

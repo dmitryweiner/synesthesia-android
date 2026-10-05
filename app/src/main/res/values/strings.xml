@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Every line the app says itself, so it can speak the phone's language
+  (ru, he, uk alongside this one).
+
+  What is deliberately *not* here: everything the core generates — the status
+  line after a press, the section titles, control labels and descriptions in
+  ⚙ Settings, the built-in points' names. Those come from the schema dumped
+  from the web app, they are the same words in both apps, and translating
+  them would mean translating the web app.
+-->
 <resources>
-    <string name="app_name">Synesthesia</string>
+    <string name="app_name" translatable="false">Synesthesia</string>
+
+    <!-- The notification, which is also what a watch or a car shows. -->
     <string name="channel_playback">Playback</string>
     <string name="action_play">Play</string>
     <string name="action_stop">Stop</string>
@@ -9,4 +21,91 @@
     <string name="playing">Playing</string>
     <string name="stopped">Stopped</string>
     <string name="paused_for_focus">Paused while another app plays</string>
+
+    <!-- The player. -->
+    <string name="play">▶ Play</string>
+    <string name="stop">⏹ Stop</string>
+    <string name="state_playing">playing</string>
+    <string name="state_stopped">stopped</string>
+    <string name="state_paused">paused while another app plays</string>
+    <string name="view_picture">Picture</string>
+    <string name="view_spectrum">Spectrum</string>
+    <string name="view_full">Full</string>
+    <string name="showing_picture">Showing the picture</string>
+    <string name="showing_spectrum">Showing the spectrum</string>
+    <string name="full_screen">Fill the screen with the picture</string>
+    <string name="close">✕ Close</string>
+    <string name="points">Points</string>
+    <string name="status_hint">👍 when you like where it is going, 👎 when you don\'t</string>
+    <string name="scouting">scouting on %1$d threads</string>
+    <string name="scouted">ready: %1$d 👍 · %2$d 👎</string>
+    <string name="spread">spread %1$s</string>
+    <string name="undo_left">" · ↩ %1$d"</string>
+
+    <!-- ⋮ -->
+    <string name="menu_details">What is this point?</string>
+    <string name="menu_help">How this works</string>
+    <string name="menu_copy">Copy this point as a token</string>
+    <string name="menu_paste">Open a token from the clipboard</string>
+    <string name="menu_version">Version %1$s</string>
+    <string name="copied_token">The point is on the clipboard, as a #s= token</string>
+    <string name="clipboard_empty">Nothing on the clipboard</string>
+
+    <!-- The points, and 💾. -->
+    <string name="points_mine">My points</string>
+    <string name="points_none">None yet — 💾 keeps the point you are on, under a name.</string>
+    <string name="points_builtin">Built in</string>
+    <string name="forget">Forget</string>
+    <string name="forget_title">Forget “%1$s”?</string>
+    <string name="forget_body">It goes from your points. Whatever is playing keeps playing.</string>
+    <string name="keep_it">Keep it</string>
+    <string name="name_point">Name this point</string>
+    <string name="name_replaces">Keeping a name you already used replaces that point.</string>
+    <string name="keep">💾 Keep</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- What is this point? -->
+    <string name="details_step">step %1$d · spread %2$.2f · ↩ %3$d</string>
+    <string name="details_last_press">The last press</string>
+    <string name="details_switched_on">What is switched on</string>
+    <string name="on">on</string>
+    <string name="off">off</string>
+
+    <!-- How this works, and the first run. -->
+    <string name="welcome_title">Welcome to Synesthesia</string>
+    <string name="help_play">▶ Play starts the sound — nothing is heard until you press it.</string>
+    <string name="help_body">\nOne point in a large space of parameters makes a sound and a picture together, and you steer the search through it:\n\n👍 more of this — the search carries on the way it was going.\n👎 not this — back, and off in another direction.\n🎲 somewhere else entirely.\n↩ back one step.\n\nA change arrives over about two seconds, so press and listen. A finger on the picture paints into it. 💾 keeps the point under a name, Points opens what you have kept, and ⚙ shows every parameter there is.</string>
+    <string name="help_done">Got it</string>
+    <string name="welcome_done">Start listening</string>
+
+    <!-- ⚙ Settings. -->
+    <string name="settings">Settings</string>
+    <string name="settings_done">Done</string>
+    <string name="tab_sound">Sound</string>
+    <string name="tab_picture">Picture</string>
+    <string name="volume">Volume · %1$s</string>
+    <string name="read_more">Read more</string>
+
+    <!-- The meters under the spectrogram. Room for about seven characters. -->
+    <string name="meter_loud">loud</string>
+    <string name="meter_bright">bright</string>
+    <string name="meter_low">low</string>
+    <string name="meter_mid">mid</string>
+    <string name="meter_high">high</string>
+    <string name="meter_onset">onset</string>
+    <string name="meter_swell">swell</string>
+    <string name="no_numbers">—</string>
+    <string name="frame_stats">hits %1$d · peak %2$.3f · limiter %3$.1f dB · t %4$.1f s</string>
+    <string name="output_stats">%1$d Hz · buffer %2$d ms · core %3$.1f%% (peak %4$.0f%%) · underruns %5$d</string>
+
+    <!-- What the app has to tell the user. -->
+    <string name="msg_keep_failed">Could not keep the point: %1$s</string>
+    <string name="msg_not_a_token">That is not a point token</string>
+    <string name="msg_opened_pasted">Opened the pasted point</string>
+    <string name="msg_opened_link">Opened the point from the link</string>
+    <string name="msg_opened_preset">Opened %1$s</string>
+    <string name="msg_link_unknown">That link asks for a point this app does not have</string>
+    <string name="msg_link_needs_web">That link points at a saved point on the web app, which this app cannot fetch</string>
+    <string name="msg_focus_denied">Another app is holding the sound (a call?)</string>
+    <string name="msg_sound_stopped">The sound stopped: %1$s</string>
 </resources>

@@ -26,8 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import io.github.dmitryweiner.synesthesia.R
 import io.github.dmitryweiner.synesthesia.core.SessionView
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
 
@@ -52,7 +54,7 @@ fun PointsSheet(controller: PlaybackController, view: SessionView, onDismiss: ()
         LazyColumn(Modifier.heightIn(max = 520.dp)) {
             item {
                 Text(
-                    "My points",
+                    stringResource(R.string.points_mine),
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
                 )
@@ -60,7 +62,7 @@ fun PointsSheet(controller: PlaybackController, view: SessionView, onDismiss: ()
             if (kept.isEmpty()) {
                 item {
                     Text(
-                        "None yet — 💾 keeps the point you are on, under a name.",
+                        stringResource(R.string.points_none),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
@@ -74,7 +76,7 @@ fun PointsSheet(controller: PlaybackController, view: SessionView, onDismiss: ()
                         TextButton(
                             onClick = { forgetting = i },
                             modifier = Modifier.testTag("forget"),
-                        ) { Text("Forget") }
+                        ) { Text(stringResource(R.string.forget)) }
                     },
                     colors = itemColours(view.steps == 0u && view.pointName == name),
                     modifier = Modifier
@@ -88,7 +90,7 @@ fun PointsSheet(controller: PlaybackController, view: SessionView, onDismiss: ()
             item { HorizontalDivider(Modifier.padding(vertical = 8.dp)) }
             item {
                 Text(
-                    "Built in",
+                    stringResource(R.string.points_builtin),
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
                 )
@@ -112,8 +114,8 @@ fun PointsSheet(controller: PlaybackController, view: SessionView, onDismiss: ()
         val name = kept.getOrNull(index) ?: return@let
         AlertDialog(
             onDismissRequest = { forgetting = null },
-            title = { Text("Forget “$name”?") },
-            text = { Text("It goes from your points. Whatever is playing keeps playing.") },
+            title = { Text(stringResource(R.string.forget_title, name)) },
+            text = { Text(stringResource(R.string.forget_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -121,9 +123,9 @@ fun PointsSheet(controller: PlaybackController, view: SessionView, onDismiss: ()
                         forgetting = null
                     },
                     modifier = Modifier.testTag("forgetConfirm"),
-                ) { Text("Forget") }
+                ) { Text(stringResource(R.string.forget)) }
             },
-            dismissButton = { TextButton(onClick = { forgetting = null }) { Text("Keep it") } },
+            dismissButton = { TextButton(onClick = { forgetting = null }) { Text(stringResource(R.string.keep_it)) } },
         )
     }
 }
@@ -145,7 +147,7 @@ fun KeepDialog(controller: PlaybackController, onDismiss: () -> Unit) {
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Name this point") },
+        title = { Text(stringResource(R.string.name_point)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -157,12 +159,12 @@ fun KeepDialog(controller: PlaybackController, onDismiss: () -> Unit) {
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Done),
                 )
                 Text(
-                    "Keeping a name you already used replaces that point.",
+                    stringResource(R.string.name_replaces),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
         },
-        confirmButton = { Button(onClick = keep, modifier = Modifier.testTag("keep")) { Text("💾 Keep") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { Button(onClick = keep, modifier = Modifier.testTag("keep")) { Text(stringResource(R.string.keep)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

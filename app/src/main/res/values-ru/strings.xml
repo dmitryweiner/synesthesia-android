@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Русский. Слова ядра (строка состояния после нажатия, названия разделов и
+  параметров в ⚙, имена встроенных точек) приходят из схемы веб-приложения и
+  остаются английскими — см. values/strings.xml.
+-->
+<resources>
+    <string name="channel_playback">Воспроизведение</string>
+    <string name="action_play">Пуск</string>
+    <string name="action_stop">Стоп</string>
+    <string name="action_like">Ещё в эту сторону</string>
+    <string name="action_dislike">Не это</string>
+    <string name="playing">Играет</string>
+    <string name="stopped">Остановлено</string>
+    <string name="paused_for_focus">Пауза: играет другое приложение</string>
+
+    <string name="play">▶ Пуск</string>
+    <string name="stop">⏹ Стоп</string>
+    <string name="state_playing">играет</string>
+    <string name="state_stopped">остановлено</string>
+    <string name="state_paused">пауза: играет другое приложение</string>
+    <string name="view_picture">Картинка</string>
+    <string name="view_spectrum">Спектр</string>
+    <string name="view_full">Во весь экран</string>
+    <string name="showing_picture">Показываю картинку</string>
+    <string name="showing_spectrum">Показываю спектр</string>
+    <string name="full_screen">Развернуть картинку на весь экран</string>
+    <string name="close">✕ Закрыть</string>
+    <string name="points">Точки</string>
+    <string name="status_hint">👍 когда нравится, куда всё идёт, 👎 когда нет</string>
+    <string name="scouting">разведка в %1$d потоках</string>
+    <string name="scouted">готово: %1$d 👍 · %2$d 👎</string>
+    <string name="spread">разброс %1$s</string>
+    <string name="undo_left">" · ↩ %1$d"</string>
+
+    <string name="menu_details">Что это за точка?</string>
+    <string name="menu_help">Как это работает</string>
+    <string name="menu_copy">Скопировать точку как токен</string>
+    <string name="menu_paste">Открыть токен из буфера обмена</string>
+    <string name="menu_version">Версия %1$s</string>
+    <string name="copied_token">Точка в буфере обмена, как токен #s=</string>
+    <string name="clipboard_empty">В буфере обмена ничего нет</string>
+
+    <string name="points_mine">Мои точки</string>
+    <string name="points_none">Пока пусто — 💾 сохраняет точку, на которой вы сейчас, под именем.</string>
+    <string name="points_builtin">Встроенные</string>
+    <string name="forget">Забыть</string>
+    <string name="forget_title">Забыть «%1$s»?</string>
+    <string name="forget_body">Точка уйдёт из ваших. То, что играет, играть не перестанет.</string>
+    <string name="keep_it">Оставить</string>
+    <string name="name_point">Назовите точку</string>
+    <string name="name_replaces">Сохранение под уже занятым именем заменит ту точку.</string>
+    <string name="keep">💾 Сохранить</string>
+    <string name="cancel">Отмена</string>
+
+    <string name="details_step">шаг %1$d · разброс %2$.2f · ↩ %3$d</string>
+    <string name="details_last_press">Последнее нажатие</string>
+    <string name="details_switched_on">Что включено</string>
+    <string name="on">вкл</string>
+    <string name="off">выкл</string>
+
+    <string name="welcome_title">Добро пожаловать в Synesthesia</string>
+    <string name="help_play">▶ Пуск включает звук — пока не нажмёте, ничего не слышно.</string>
+    <string name="help_body">\nОдна точка в большом пространстве параметров даёт сразу звук и картинку, а вы ведёте поиск по этому пространству:\n\n👍 ещё в эту сторону — поиск продолжит начатое движение.\n👎 не это — назад и в другую сторону.\n🎲 куда-нибудь совсем в другое место.\n↩ на шаг назад.\n\nИзменение приходит за пару секунд, так что нажмите и слушайте. Палец на картинке рисует в ней. 💾 сохраняет точку под именем, Точки открывают сохранённое, а ⚙ показывает все параметры, какие есть.</string>
+    <string name="help_done">Понятно</string>
+    <string name="welcome_done">Начать слушать</string>
+
+    <string name="settings">Настройки</string>
+    <string name="settings_done">Готово</string>
+    <string name="tab_sound">Звук</string>
+    <string name="tab_picture">Картинка</string>
+    <string name="volume">Громкость · %1$s</string>
+    <string name="read_more">Подробнее</string>
+
+    <string name="meter_loud">громк.</string>
+    <string name="meter_bright">ярк.</string>
+    <string name="meter_low">низ</string>
+    <string name="meter_mid">серед.</string>
+    <string name="meter_high">верх</string>
+    <string name="meter_onset">атака</string>
+    <string name="meter_swell">волна</string>
+    <string name="no_numbers">—</string>
+    <string name="frame_stats">удары %1$d · пик %2$.3f · лимитер %3$.1f dB · t %4$.1f с</string>
+    <string name="output_stats">%1$d Гц · буфер %2$d мс · ядро %3$.1f%% (пик %4$.0f%%) · провалы %5$d</string>
+
+    <string name="msg_keep_failed">Не удалось сохранить точку: %1$s</string>
+    <string name="msg_not_a_token">Это не токен точки</string>
+    <string name="msg_opened_pasted">Вставленная точка открыта</string>
+    <string name="msg_opened_link">Точка из ссылки открыта</string>
+    <string name="msg_opened_preset">Открыто: %1$s</string>
+    <string name="msg_link_unknown">Ссылка просит точку, которой в этом приложении нет</string>
+    <string name="msg_link_needs_web">Ссылка ведёт на точку, сохранённую в веб-приложении, — это приложение её не загрузит</string>
+    <string name="msg_focus_denied">Звук занят другим приложением (звонок?)</string>
+    <string name="msg_sound_stopped">Звук остановился: %1$s</string>
+</resources>

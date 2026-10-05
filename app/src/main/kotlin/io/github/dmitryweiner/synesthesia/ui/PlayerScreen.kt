@@ -3,6 +3,7 @@ package io.github.dmitryweiner.synesthesia.ui
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,8 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,11 +80,12 @@ enum class ViewMode {
     /** The other of the two that share the block. */
     fun other(): ViewMode = if (this == Spectrum) Picture else Spectrum
 
-    val label: String
+    @get:StringRes
+    val label: Int
         get() = when (this) {
-            Picture -> "Picture"
-            Spectrum -> "Spectrum"
-            Full -> "Full"
+            Picture -> R.string.view_picture
+            Spectrum -> R.string.view_spectrum
+            Full -> R.string.view_full
         }
 }
 
@@ -135,13 +140,17 @@ fun PlayerScreen(
         }
     }
 
+    // Read where a composable may read them, said where the press is handled.
+    val showingPicture = stringResource(R.string.showing_picture)
+    val showingSpectrum = stringResource(R.string.showing_spectrum)
+
     val show = { next: ViewMode ->
         view = next
         controller.files.saveView(next.name)
     }
     val swap = {
         show(view.other())
-        said = "Showing the ${view.label.lowercase()}"
+        said = if (view == ViewMode.Spectrum) showingSpectrum else showingPicture
     }
     val enterFull = {
         beforeFull = view
@@ -172,14 +181,16 @@ fun PlayerScreen(
                     onClick = { if (state.holdsForeground) controller.stop() else onPlay() },
                     modifier = Modifier.testTag("play"),
                 ) {
-                    Text(if (state.holdsForeground) "⏹ Stop" else "▶ Play")
+                    Text(stringResource(if (state.holdsForeground) R.string.stop else R.string.play))
                 }
                 Text(
-                    when {
-                        state.pausedForFocus -> "paused while another app plays"
-                        state.playing -> "playing"
-                        else -> "stopped"
-                    },
+                    stringResource(
+                        when {
+                            state.pausedForFocus -> R.string.state_paused
+                            state.playing -> R.string.state_playing
+                            else -> R.string.state_stopped
+                        },
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
@@ -198,9 +209,18 @@ fun PlayerScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { StatsLine(stats) }
                 TextButton(onClick = swap, modifier = Modifier.testTag("viewMode")) {
-                    Text(view.other().label)
+                    Text(stringResource(view.other().label))
                 }
-                TextButton(onClick = enterFull, modifier = Modifier.testTag("fullScreen")) { Text("⤢") }
+                val full = stringResource(R.string.full_screen)
+                TextButton(
+                    onClick = enterFull,
+                    modifier = Modifier
+                        .semantics { contentDescription = full }
+                        .testTag("fullScreen"),
+                ) {
+                    // A glyph at the body size is a smudge; this one is a button.
+                    Text("⤢", style = MaterialTheme.typography.headlineSmall)
+                }
             }
             SearchBar(controller, state.session)
             StatusLine(state.session, remember { controller.scoutThreads() })
@@ -262,7 +282,7 @@ private fun Header(
                 modifier = Modifier.size(if (wide) 72.dp else 40.dp).testTag("logo"),
             )
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = onPoints, modifier = Modifier.testTag("points")) { Text("Points") }
+            TextButton(onClick = onPoints, modifier = Modifier.testTag("points")) { Text(stringResource(R.string.points)) }
             TextButton(onClick = onSettings, modifier = Modifier.testTag("openSettings")) { Text("⚙") }
             TextButton(onClick = onKeep, modifier = Modifier.testTag("keepPoint")) { Text("💾") }
             MoreMenu(controller, onDetails = onDetails, onHelp = onHelp, onSaid = onSaid)
@@ -292,12 +312,15 @@ private fun MoreMenu(
 ) {
     var open by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val clipboard = remember(context) { context.getSystemService(ClipboardManager::class.java) }
+    val copied = stringResource(R.string.copied_token)
+    val empty = stringResource(R.string.clipboard_empty)
     Box {
         TextButton(onClick = { open = true }, modifier = Modifier.testTag("more")) { Text("⋮") }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
-                text = { Text("What is this point?") },
+                text = { Text(stringResource(R.string.menu_details)) },
                 onClick = {
                     onDetails()
                     open = false
@@ -305,7 +328,7 @@ private fun MoreMenu(
                 modifier = Modifier.testTag("openDetails"),
             )
             DropdownMenuItem(
-                text = { Text("How this works") },
+                text = { Text(stringResource(R.string.menu_help)) },
                 onClick = {
                     onHelp()
                     open = false
@@ -313,16 +336,16 @@ private fun MoreMenu(
                 modifier = Modifier.testTag("openHelp"),
             )
             DropdownMenuItem(
-                text = { Text("Copy this point as a token") },
+                text = { Text(stringResource(R.string.menu_copy)) },
                 onClick = {
                     clipboard.setPrimaryClip(ClipData.newPlainText(CLIP_LABEL, "#s=${controller.token()}"))
-                    onSaid("The point is on the clipboard, as a #s= token")
+                    onSaid(copied)
                     open = false
                 },
                 modifier = Modifier.testTag("copyToken"),
             )
             DropdownMenuItem(
-                text = { Text("Open a token from the clipboard") },
+                text = { Text(stringResource(R.string.menu_paste)) },
                 onClick = {
                     val pasted = clipboard.primaryClip
                         ?.takeIf { it.itemCount > 0 }
@@ -331,7 +354,7 @@ private fun MoreMenu(
                         ?.toString()
                     onSaid(
                         if (pasted.isNullOrBlank()) {
-                            "Nothing on the clipboard"
+                            empty
                         } else {
                             controller.importToken(pasted)
                         },
@@ -345,10 +368,11 @@ private fun MoreMenu(
             // be pasted rather than transcribed.
             val version = "${BuildConfig.VERSION_NAME} · core ${remember { coreVersion() }}"
             DropdownMenuItem(
-                text = { Text("Version $version") },
+                text = { Text(stringResource(R.string.menu_version, version)) },
                 onClick = {
-                    clipboard.setPrimaryClip(ClipData.newPlainText(CLIP_LABEL, version))
-                    onSaid("Copied: $version")
+                    // Where the build came from, and where to report what it
+                    // does: the repository it was made in.
+                    uriHandler.openUri(REPOSITORY)
                     open = false
                 },
                 modifier = Modifier.testTag("version"),
@@ -358,6 +382,9 @@ private fun MoreMenu(
 }
 
 private const val CLIP_LABEL = "Synesthesia point"
+
+/** Where the build came from, and where anything about it is reported. */
+internal const val REPOSITORY = "https://github.com/dmitryweiner/synesthesia-android/"
 
 /**
  * The picture over everything, with the presses still at hand.
@@ -377,7 +404,7 @@ private fun FullPicture(controller: PlaybackController, state: PlaybackControlle
         TextButton(
             onClick = onClose,
             modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(8.dp).testTag("closeFull"),
-        ) { Text("✕ Close") }
+        ) { Text(stringResource(R.string.close)) }
         Column(
             Modifier.align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -450,22 +477,21 @@ private fun Press(label: String, tag: String, modifier: Modifier, enabled: Boole
 private fun StatusLine(view: SessionView, scoutThreads: Int) {
     Column(Modifier.fillMaxWidth().height(44.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
-            view.status.substringBefore('\n').ifEmpty { "👍 when you like where it is going, 👎 when you don't" },
+            view.status.substringBefore('\n').ifEmpty { stringResource(R.string.status_hint) },
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.testTag("status"),
         )
+        val doing = when {
+            view.scoutBusy -> stringResource(R.string.scouting, scoutThreads)
+            view.scoutedLike + view.scoutedDislike > 0u ->
+                stringResource(R.string.scouted, view.scoutedLike.toInt(), view.scoutedDislike.toInt())
+            else -> stringResource(R.string.spread, "%.2f".format(view.sigma))
+        }
+        val left = if (view.canUndo) stringResource(R.string.undo_left, view.undoDepth.toInt()) else ""
         Text(
-            buildString {
-                when {
-                    view.scoutBusy -> append("scouting on $scoutThreads threads")
-                    view.scoutedLike + view.scoutedDislike > 0u ->
-                        append("ready: ${view.scoutedLike} 👍 · ${view.scoutedDislike} 👎")
-                    else -> append("spread %.2f".format(view.sigma))
-                }
-                if (view.canUndo) append(" · ↩ ${view.undoDepth}")
-            },
+            doing + left,
             style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

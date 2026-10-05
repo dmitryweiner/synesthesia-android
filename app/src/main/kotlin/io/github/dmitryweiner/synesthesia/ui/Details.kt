@@ -16,7 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.dmitryweiner.synesthesia.R
 import io.github.dmitryweiner.synesthesia.core.ControlKind
 import io.github.dmitryweiner.synesthesia.core.PointEdit
 import io.github.dmitryweiner.synesthesia.core.SessionView
@@ -39,20 +41,22 @@ import kotlin.math.roundToInt
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class) // ModalBottomSheet
 @Composable
 fun DetailsSheet(controller: PlaybackController, view: SessionView, onDismiss: () -> Unit) {
-    val lines = remember(view) { describe(controller) }
+    val on = stringResource(R.string.on)
+    val off = stringResource(R.string.off)
+    val lines = remember(view) { describe(controller, on, off) }
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("details")) {
         LazyColumn(Modifier.heightIn(max = 560.dp).padding(horizontal = 16.dp).testTag("detailsList")) {
             item {
                 Text(view.name, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "step ${view.steps} · spread %.2f · ↩ %d".format(view.sigma, view.undoDepth.toInt()),
+                    stringResource(R.string.details_step, view.steps.toInt(), view.sigma, view.undoDepth.toInt()),
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
             if (view.status.isNotEmpty()) {
                 item {
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                    Text("The last press", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.details_last_press), style = MaterialTheme.typography.titleSmall)
                     // Both lines of the core's status: what happened, and
                     // which genes moved and which way.
                     Text(view.status, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("changed"))
@@ -60,7 +64,7 @@ fun DetailsSheet(controller: PlaybackController, view: SessionView, onDismiss: (
             }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                Text("What is switched on", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.details_switched_on), style = MaterialTheme.typography.titleSmall)
             }
             items(lines, key = { it.first }) { (title, body) ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -78,7 +82,7 @@ fun DetailsSheet(controller: PlaybackController, view: SessionView, onDismiss: (
  * with a switch appears only while it is on, and each of its controls reads
  * as the schema labels it.
  */
-private fun describe(controller: PlaybackController): List<Pair<String, String>> {
+private fun describe(controller: PlaybackController, on: String, off: String): List<Pair<String, String>> {
     val point = PointEdit(controller.pointJson())
     return point.use { edit ->
         settingsPage().mapNotNull { section ->
@@ -88,12 +92,12 @@ private fun describe(controller: PlaybackController): List<Pair<String, String>>
                 val v = edit.value(control.id)
                 val shown = when (control.kind) {
                     ControlKind.CHOICE -> control.options.getOrElse(v.roundToInt()) { "${v.roundToInt()}" }
-                    ControlKind.SWITCH -> if (v >= 0.5) "on" else "off"
+                    ControlKind.SWITCH -> if (v >= 0.5) on else off
                     ControlKind.SLIDER -> format(v)
                 }
                 "${control.shortLabel} $shown"
             }
-            section.title to body.ifEmpty { "on" }
+            section.title to body.ifEmpty { on }
         }
     }
 }
@@ -110,28 +114,23 @@ fun HelpDialog(onDismiss: () -> Unit, welcome: Boolean = false) {
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag(if (welcome) "welcome" else "help"),
-        title = { Text(if (welcome) "Welcome to Synesthesia" else "Synesthesia") },
+        title = { Text(stringResource(if (welcome) R.string.welcome_title else R.string.app_name)) },
         text = {
             Column {
                 Text(
-                    "▶ Play starts the sound — nothing is heard until you press it.",
+                    stringResource(R.string.help_play),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    "\nOne point in a large space of parameters makes a sound and a picture " +
-                        "together, and you steer the search through it:" +
-                        "\n\n👍 more of this — the search carries on the way it was going." +
-                        "\n👎 not this — back, and off in another direction." +
-                        "\n🎲 somewhere else entirely." +
-                        "\n↩ back one step." +
-                        "\n\nA change arrives over about two seconds, so press and listen. " +
-                        "A finger on the picture paints into it. 💾 keeps the point under a " +
-                        "name, Points opens what you have kept, and ⚙ shows every parameter " +
-                        "there is.",
+                    stringResource(R.string.help_body),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(if (welcome) "Start listening" else "Got it") } },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(if (welcome) R.string.welcome_done else R.string.help_done))
+            }
+        },
     )
 }

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  עברית. המילים שהליבה מחשבת (שורת המצב אחרי לחיצה, שמות המקטעים והפרמטרים
+  ב-⚙, שמות הנקודות המוכנות) מגיעות מהסכמה של אפליקציית הווב ונשארות
+  באנגלית — ראו values/strings.xml.
+-->
+<resources>
+    <string name="channel_playback">נגינה</string>
+    <string name="action_play">נגן</string>
+    <string name="action_stop">עצור</string>
+    <string name="action_like">עוד מזה</string>
+    <string name="action_dislike">לא זה</string>
+    <string name="playing">מנגן</string>
+    <string name="stopped">עצר</string>
+    <string name="paused_for_focus">מושהה בזמן שאפליקציה אחרת מנגנת</string>
+
+    <string name="play">▶ נגן</string>
+    <string name="stop">⏹ עצור</string>
+    <string name="state_playing">מנגן</string>
+    <string name="state_stopped">עצר</string>
+    <string name="state_paused">מושהה בזמן שאפליקציה אחרת מנגנת</string>
+    <string name="view_picture">תמונה</string>
+    <string name="view_spectrum">ספקטרום</string>
+    <string name="view_full">מסך מלא</string>
+    <string name="showing_picture">מציג את התמונה</string>
+    <string name="showing_spectrum">מציג את הספקטרום</string>
+    <string name="full_screen">למלא את המסך בתמונה</string>
+    <string name="close">✕ סגור</string>
+    <string name="points">נקודות</string>
+    <string name="status_hint">👍 כשאוהבים לאן זה הולך, 👎 כשלא</string>
+    <string name="scouting">סורק ב-%1$d תהליכונים</string>
+    <string name="scouted">מוכן: %1$d 👍 · %2$d 👎</string>
+    <string name="spread">פיזור %1$s</string>
+    <string name="undo_left">" · ↩ %1$d"</string>
+
+    <string name="menu_details">מה הנקודה הזאת?</string>
+    <string name="menu_help">איך זה עובד</string>
+    <string name="menu_copy">העתק את הנקודה כאסימון</string>
+    <string name="menu_paste">פתח אסימון מלוח הגזירים</string>
+    <string name="menu_version">גרסה %1$s</string>
+    <string name="copied_token">הנקודה בלוח הגזירים, כאסימון #s=</string>
+    <string name="clipboard_empty">אין כלום בלוח הגזירים</string>
+
+    <string name="points_mine">הנקודות שלי</string>
+    <string name="points_none">עדיין אין — 💾 שומר את הנקודה שאתם עליה, בשם.</string>
+    <string name="points_builtin">מוכנות מראש</string>
+    <string name="forget">שכח</string>
+    <string name="forget_title">לשכוח את „%1$s”?</string>
+    <string name="forget_body">היא תצא מהנקודות שלכם. מה שמנגן ימשיך לנגן.</string>
+    <string name="keep_it">להשאיר</string>
+    <string name="name_point">תנו שם לנקודה</string>
+    <string name="name_replaces">שמירה בשם שכבר קיים תחליף את אותה נקודה.</string>
+    <string name="keep">💾 שמור</string>
+    <string name="cancel">ביטול</string>
+
+    <string name="details_step">שלב %1$d · פיזור %2$.2f · ↩ %3$d</string>
+    <string name="details_last_press">הלחיצה האחרונה</string>
+    <string name="details_switched_on">מה מופעל</string>
+    <string name="on">פועל</string>
+    <string name="off">כבוי</string>
+
+    <string name="welcome_title">ברוכים הבאים ל-Synesthesia</string>
+    <string name="help_play">▶ נגן מפעיל את הצליל — עד שלוחצים, לא נשמע דבר.</string>
+    <string name="help_body">\nנקודה אחת במרחב גדול של פרמטרים מפיקה צליל ותמונה יחד, ואתם מכוונים את החיפוש במרחב הזה:\n\n👍 עוד מזה — החיפוש ימשיך בכיוון שבו הלך.\n👎 לא זה — חזרה, והלאה לכיוון אחר.\n🎲 למקום אחר לגמרי.\n↩ צעד אחד אחורה.\n\nשינוי מגיע בתוך שתי שניות בערך, אז לחצו והאזינו. אצבע על התמונה מציירת בה. 💾 שומר את הנקודה בשם, ‏נקודות פותחות את מה ששמרתם, ו-⚙ מראה כל פרמטר שיש.</string>
+    <string name="help_done">הבנתי</string>
+    <string name="welcome_done">להתחיל להאזין</string>
+
+    <string name="settings">הגדרות</string>
+    <string name="settings_done">סיום</string>
+    <string name="tab_sound">צליל</string>
+    <string name="tab_picture">תמונה</string>
+    <string name="volume">עוצמה · %1$s</string>
+    <string name="read_more">קראו עוד</string>
+
+    <string name="meter_loud">עוצמה</string>
+    <string name="meter_bright">בהירות</string>
+    <string name="meter_low">נמוך</string>
+    <string name="meter_mid">בינוני</string>
+    <string name="meter_high">גבוה</string>
+    <string name="meter_onset">התקפה</string>
+    <string name="meter_swell">גלים</string>
+    <string name="no_numbers">—</string>
+    <string name="frame_stats">פגיעות %1$d · שיא %2$.3f · מגביל %3$.1f dB · t %4$.1f s</string>
+    <string name="output_stats">%1$d Hz · מאגר %2$d ms · ליבה %3$.1f%% (שיא %4$.0f%%) · נפילות %5$d</string>
+
+    <string name="msg_keep_failed">לא הצלחתי לשמור את הנקודה: %1$s</string>
+    <string name="msg_not_a_token">זה לא אסימון של נקודה</string>
+    <string name="msg_opened_pasted">הנקודה שהודבקה נפתחה</string>
+    <string name="msg_opened_link">הנקודה מהקישור נפתחה</string>
+    <string name="msg_opened_preset">נפתח: %1$s</string>
+    <string name="msg_link_unknown">הקישור מבקש נקודה שאין באפליקציה הזאת</string>
+    <string name="msg_link_needs_web">הקישור מצביע על נקודה שנשמרה באפליקציית הווב, והאפליקציה הזאת לא יכולה להביא אותה</string>
+    <string name="msg_focus_denied">אפליקציה אחרת מחזיקה בצליל (שיחה?)</string>
+    <string name="msg_sound_stopped">הצליל נעצר: %1$s</string>
+</resources>

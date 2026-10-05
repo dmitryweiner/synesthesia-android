@@ -11,6 +11,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.RichTooltip
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -24,12 +29,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import io.github.dmitryweiner.synesthesia.R
 import io.github.dmitryweiner.synesthesia.core.Control
 import io.github.dmitryweiner.synesthesia.core.ControlKind
 import io.github.dmitryweiner.synesthesia.core.PointEdit
@@ -37,9 +46,11 @@ import io.github.dmitryweiner.synesthesia.core.Section
 import io.github.dmitryweiner.synesthesia.core.SettingsTab
 import io.github.dmitryweiner.synesthesia.core.settingsPage
 import io.github.dmitryweiner.synesthesia.playback.PlaybackController
+import androidx.compose.material3.rememberTooltipState
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /**
  * ⚙ Settings (PLAN.md phase 5): every parameter of the point, on two tabs.
@@ -60,16 +71,27 @@ fun SettingsScreen(controller: PlaybackController, onClose: () -> Unit, modifier
     val edit = remember { controller.openSettings() }
     val page = remember { settingsPage() }
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf(SettingsTab.SOUND to "Sound", SettingsTab.PICTURE to "Picture")
+    // The tag is the tab's own name, not its label: the label is translated.
+    val tabs = listOf(
+        Triple(SettingsTab.SOUND, R.string.tab_sound, "tabSound"),
+        Triple(SettingsTab.PICTURE, R.string.tab_picture, "tabPicture"),
+    )
 
     Column(modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Settings", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-            TextButton(onClick = onClose, modifier = Modifier.testTag("closeSettings")) { Text("Done") }
+            Text(stringResource(R.string.settings), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+            TextButton(onClick = onClose, modifier = Modifier.testTag("closeSettings")) {
+                Text(stringResource(R.string.settings_done))
+            }
         }
         PrimaryTabRow(selectedTabIndex = tab) {
-            tabs.forEachIndexed { i, (_, title) ->
-                Tab(selected = tab == i, onClick = { tab = i }, text = { Text(title) }, modifier = Modifier.testTag("tab$title"))
+            tabs.forEachIndexed { i, (_, title, tag) ->
+                Tab(
+                    selected = tab == i,
+                    onClick = { tab = i },
+                    text = { Text(stringResource(title)) },
+                    modifier = Modifier.testTag(tag),
+                )
             }
         }
         val shown = page.filter { it.tab == tabs[tab].first }
@@ -90,7 +112,7 @@ fun SettingsScreen(controller: PlaybackController, onClose: () -> Unit, modifier
 private fun Volume(edit: PointEdit, controller: PlaybackController) {
     var value by remember { mutableStateOf(edit.masterGain().toFloat()) }
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("Volume · %.2f".format(value), style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.volume, "%.2f".format(value)), style = MaterialTheme.typography.labelLarge)
         Slider(
             value = value,
             onValueChange = {
@@ -109,7 +131,6 @@ private fun SectionBlock(section: Section, edit: PointEdit, controller: Playback
     // Sections start closed: there are forty of them, and a point has 250
     // parameters.
     var open by remember(section.id) { mutableStateOf(false) }
-    var explain by remember(section.id) { mutableStateOf(false) }
     val toggle = section.toggle
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
@@ -123,31 +144,61 @@ private fun SectionBlock(section: Section, edit: PointEdit, controller: Playback
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // What the thing is, in the schema's own words — the web app
-            // shows it beside each formula and card. There is nothing to say
-            // about an FX module or an LFO, and then there is no button.
+            // What the thing is, in the schema's own words, and where to
+            // read more. There is nothing to say about an FX module or an
+            // LFO, and then there is no button.
             if (section.description.isNotEmpty()) {
-                TextButton(
-                    onClick = { explain = !explain },
-                    modifier = Modifier.testTag("explain:${section.id}"),
-                ) { Text("?") }
+                Explain(section)
             }
             if (toggle != null) {
                 SwitchControl(toggle, edit, controller)
             }
-        }
-        if (explain) {
-            Text(
-                section.description,
-                Modifier.padding(start = 24.dp, end = 16.dp, bottom = 8.dp).testTag("about:${section.id}"),
-                style = MaterialTheme.typography.bodySmall,
-            )
         }
         if (open) {
             for (control in section.controls) {
                 ControlRow(control, edit, controller)
             }
         }
+    }
+}
+
+/**
+ * What this section is, in a tooltip: the schema's own line about the thing,
+ * and the Wikipedia article about it where the core has one. A tooltip rather
+ * than a line in the page — the answer to "what is a Lorenz attractor" is not
+ * part of the settings, it is an aside, and it closes when it is read.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Explain(section: Section) {
+    val state = rememberTooltipState(isPersistent = true)
+    val scope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        state = state,
+        tooltip = {
+            RichTooltip(
+                title = { Text(section.title) },
+                action = section.article?.let { url ->
+                    {
+                        TextButton(
+                            onClick = {
+                                uriHandler.openUri(url)
+                                state.dismiss()
+                            },
+                            modifier = Modifier.testTag("read:${section.id}"),
+                        ) { Text(stringResource(R.string.read_more)) }
+                    }
+                },
+                modifier = Modifier.testTag("about:${section.id}"),
+            ) { Text(section.description) }
+        },
+    ) {
+        TextButton(
+            onClick = { scope.launch { state.show() } },
+            modifier = Modifier.testTag("explain:${section.id}"),
+        ) { Text("?") }
     }
 }
 

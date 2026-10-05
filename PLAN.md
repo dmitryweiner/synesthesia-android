@@ -10,8 +10,10 @@ the sound), and 👍/👎 steer the search. The web app is the spec; the
 verified model. This document says how the Android app is built so that the
 next one (Swift) is a shell, not a fourth port.
 
-Docs, UI strings and code comments are in English; the user talks to agents
-in Russian — the same rule as the sibling projects.
+Docs and code comments are in English; the user talks to agents in Russian —
+the same rule as the sibling projects. The app's own UI strings are English in
+`values/` and translated into `values-ru`, `values-he`, `values-uk`
+(2026-10-05); what the core computes stays as the core says it (see phase 6).
 
 ## Where the implementation is
 
@@ -23,11 +25,11 @@ in Russian — the same rule as the sibling projects.
 | 3 | Picture (GLES 3.0) | ✅ done; looked at on a phone 2026-10-04 |
 | 4 | Points and tokens | ✅ built 2026-10-04; to be tried on a phone (see phase 4) |
 | 5 | Settings | ✅ built 2026-10-04; to be tried on a phone (see phase 5) |
-| 6 | Polish | ✅ done 2026-10-04 (the UI rounds; more as the user finds it) |
+| 6 | Polish | ✅ done 2026-10-04; six review rounds since, the last 2026-10-05 (0.2.0: four languages) |
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`9b84a40`); this repository, `main` (phases 0 and 1 merged on
+`4a6f890`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
 
 ## Keeping up with the web app
@@ -586,11 +588,52 @@ copied into this repository.
    **On a phone (to be done by the user):** that a slider is heard while the
    finger moves, that the picture picks up the change when the page closes,
    and that ↩ takes a whole page of edits back in one press.
-6. ⏭ **Polish (next).** Details, help, the bench numbers written into this file, and
-   **the small UI fixes the user has been collecting while using the app**
-   (agreed 2026-10-04: they wait for the main phases to land, so that they
-   are made once, against the finished screens). The wake lock while the
-   picture shows arrived early, in phase 3.
+6. ✅ **Polish.** Details, help, and **the UI fixes the user collects while
+   using the app** (agreed 2026-10-04: they wait for the main phases to land,
+   so that they are made once, against the finished screens). The wake lock
+   while the picture shows arrived early, in phase 3; the bench screen was
+   dropped at the user's judgement rather than written up.
+
+   What the rounds asked for, and what it became:
+
+   - **One block, one switch.** The console's three views (picture, spectrum,
+     full) are one button under the block they change plus a ⤢ of its own,
+     not a key that cycles — a glyph at the body size was unreadable, so it is
+     a headline, with a description for TalkBack.
+   - **The header.** The app's mark (larger on a tablet), Points back where it
+     was, ⚙, 💾, ⋮; the point's name on a line of its own, a fifth smaller
+     than a title, because "Candle glaze · 3 steps" came out as "Cand…".
+   - **The status line** keeps its height whatever it says (a press used to
+     push the picture up and down), and the undo depth is in it rather than
+     breaking the ↩ button's label in half.
+   - **Full screen** hides both system bars, keeps the controls out of their
+     way, and leaves by ✕ Close back to where it came from.
+   - **What it remembers between runs:** the point (with the name it had on
+     screen — a pressed point claims no name of its own, so without that the
+     title came back empty), which view was on, and that the welcome has been
+     shown.
+   - **The first run** says, before anything else, that ▶ Play is what starts
+     the sound: the one thing people were not finding.
+   - **⚙ explains itself.** A (?) by each section opens a tooltip with the
+     schema's own line about the thing and, where the core has one, *Read
+     more* → the English Wikipedia article. The links are editorial — the web
+     app has none; `../chromaflux` links the same two articles the picture's
+     layers share, `../formula-synth` links none — and every one was checked
+     against the Wikipedia API (`syn-core`'s `settings::article`).
+   - **The version** is in ⋮ rather than on the screen, with the core's
+     version beside it, and it opens this repository.
+   - **Four languages** (2026-10-05): English, Russian, Hebrew, Ukrainian.
+     Every line the app says itself is in `app/src/main/res/values*/`, lint's
+     `MissingTranslation` keeps them complete, and `generateLocaleConfig`
+     gives Android 13+ the per-app language picker. **What is deliberately
+     not translated**: everything the core computes from the dumped schema —
+     the status line, the section titles, the control labels and
+     descriptions, the built-in points' names. They are the same words in
+     both apps, and translating them means translating the web app.
+   - **The version scheme** became `line.commits-since-the-line-opened`
+     (`app/build.gradle.kts`: `releaseLine`, `lineOpenedAt`), so the line can
+     be bumped by hand while `versionCode` stays the commit count and only
+     grows. 0.1 was the six phases, 37 commits; 0.2.0 is the four languages.
 7. **iOS readiness (optional, small).** Build `syn-ffi` as an XCFramework
    with Swift bindings and call it from a one-file Swift test — proves the
    architecture before the Swift app exists.

@@ -8,7 +8,8 @@ import java.util.concurrent.Executors
  * What the app keeps between runs (PLAN.md decision 7): the web app's JSON in
  * the app's own files, with the names the console uses —
  *
- *  * `last-point.json` — the point as it was left, restored on the next start;
+ *  * `last-point.json` — the point as it was left, restored on the next start,
+ *    and `last-name.txt`, what it was called on screen;
  *  * `points.json` — the points the user kept, an array of `{name, state}`;
  *  * `view.txt` — which view was on screen, and whether the welcome has been
  *    shown. One line each, because a line is all they are; the settings
@@ -34,6 +35,16 @@ class AppFiles(private val dir: File) {
 
     /** Keeps the point as the one to come back to. */
     fun saveLastPoint(json: String) = write(LAST_POINT, json)
+
+    /**
+     * What the point was called on screen when it was left — "Fractal garden"
+     * for a point a press or two away from it. The point itself claims no
+     * name (that is what a press takes away), so the title would come back
+     * empty without this.
+     */
+    fun lastName(): String? = read(LAST_NAME)?.trim()?.ifEmpty { null }
+
+    fun saveLastName(name: String) = write(LAST_NAME, name)
 
     /** The points file's text, or null when nothing has been kept yet. */
     fun points(): String? = read(POINTS)
@@ -94,6 +105,7 @@ class AppFiles(private val dir: File) {
         const val TAG = "SynStore"
         const val LAST_POINT = "last-point.json"
         const val POINTS = "points.json"
+        const val LAST_NAME = "last-name.txt"
         const val VIEW = "view.txt"
         const val WELCOME = "welcome.txt"
     }

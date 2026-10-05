@@ -12,6 +12,8 @@ import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.MainThread
+import androidx.annotation.StringRes
+import io.github.dmitryweiner.synesthesia.R
 import io.github.dmitryweiner.synesthesia.audio.AudioOutput
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
@@ -81,6 +83,9 @@ class PlaybackController(
     }
 
     val presets: List<PresetInfo> = presets()
+
+    /** What the app tells the user, in the phone's language. */
+    private fun say(@StringRes line: Int, vararg args: Any): String = context.getString(line, *args)
 
     private val audioManager = context.getSystemService(AudioManager::class.java)
 
@@ -197,7 +202,7 @@ class PlaybackController(
         try {
             points.keep(clean, session.pointJson())
         } catch (e: CoreException) {
-            _state.update { it.copy(message = "Could not keep the point: ${e.message}") }
+            _state.update { it.copy(message = say(R.string.msg_keep_failed, e.message.orEmpty())) }
             return
         }
         files.savePoints(points.toJson())
@@ -232,10 +237,10 @@ class PlaybackController(
         val json = try {
             pointFromToken(text)
         } catch (e: CoreException) {
-            return "That is not a point token"
+            return say(R.string.msg_not_a_token)
         }
         applyEffects(session.load(now(), "", json))
-        return "Opened the pasted point"
+        return say(R.string.msg_opened_pasted)
     }
 
     /**
@@ -246,19 +251,19 @@ class PlaybackController(
     fun openLink(url: String): String? = when (val target = pointFromLink(url)) {
         is LinkPoint.Point -> {
             applyEffects(session.load(now(), "", target.pointJson))
-            "Opened the point from the link"
+            say(R.string.msg_opened_link)
         }
         is LinkPoint.Preset -> {
             val index = target.index.toInt()
             if (index in presets.indices) {
                 select(index)
-                "Opened ${presets[index].name}"
+                say(R.string.msg_opened_preset, presets[index].name)
             } else {
-                "That link asks for a point this app does not have"
+                say(R.string.msg_link_unknown)
             }
         }
         is LinkPoint.NeedsTheWebApp ->
-            "That link points at a saved point on the web app, which this app cannot fetch"
+            say(R.string.msg_link_needs_web)
         LinkPoint.Nothing -> null
     }
 
@@ -267,7 +272,7 @@ class PlaybackController(
     fun play() {
         if (_state.value.playing) return
         if (audioManager.requestAudioFocus(focusRequest) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            _state.update { it.copy(message = "Another app is holding the sound (a call?)") }
+            _state.update { it.copy(message = say(R.string.msg_focus_denied)) }
             return
         }
         startOutput()
@@ -398,8 +403,13 @@ class PlaybackController(
                 // (it is the one that can draw the spots).
                 SessionEffect.Reseed -> reseedPending.set(true)
                 // The point to come back to, through a temporary file on a
-                // thread of its own (AppFiles).
-                is SessionEffect.SaveLastPoint -> files.saveLastPoint(effect.pointJson)
+                // thread of its own (AppFiles), and what it is called on
+                // screen — the point itself claims no name once it has been
+                // stepped away from the one it came from.
+                is SessionEffect.SaveLastPoint -> {
+                    files.saveLastPoint(effect.pointJson)
+                    files.saveLastName(session.view().pointName)
+                }
                 // Seconds of rendering, off this thread. A result for a point
                 // the user has left is dropped by the session, by its version.
                 SessionEffect.StartScout -> scouts.execute {
@@ -482,7 +492,9 @@ class PlaybackController(
 
     private fun fail(error: Throwable) {
         stop()
-        _state.update { it.copy(message = "The sound stopped: ${error.message ?: error.javaClass.simpleName}") }
+        _state.update {
+            it.copy(message = say(R.string.msg_sound_stopped, error.message ?: error.javaClass.simpleName))
+        }
     }
 
     private fun onFocusChange(change: Int) {
@@ -504,7 +516,8 @@ class PlaybackController(
         }
     }
 
-    private companion object {
+    /** What the two files mean on the way in; the device tests read them. */
+    internal companion object {
         /**
          * How often the session is stepped while something is due: a morph
          * pushes at most every 50 ms (the core's `push_interval`), so this is
@@ -540,8 +553,14 @@ class PlaybackController(
             val json = files.lastPoint()
             if (json != null) {
                 try {
-                    // The point carries its own name, so "" takes it.
-                    return Session("", json, config)
+                    // A kept point carries its own name, and "" takes it; a
+                    // point left mid-search carries none, and then the name
+                    // that was on screen says where it came from.
+                    return if (json.contains("\"presetName\"")) {
+                        Session("", json, config)
+                    } else {
+                        Session.restored(files.lastName() ?: "", json, config)
+                    }
                 } catch (e: CoreException) {
                     Log.w(TAG, "the last point is not readable; starting from the first", e)
                 }

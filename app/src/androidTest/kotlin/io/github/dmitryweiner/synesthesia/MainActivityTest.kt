@@ -1,6 +1,7 @@
 package io.github.dmitryweiner.synesthesia
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -10,11 +11,13 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.dmitryweiner.synesthesia.ui.REPOSITORY
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -63,12 +66,14 @@ class MainActivityTest {
     }
 
     @Test
-    fun aSectionInSettingsSaysWhatTheThingIs() {
+    fun aSectionInSettingsSaysWhatTheThingIsAndWhereToReadMore() {
         compose.onNodeWithTag("openSettings").performClick()
-        // The schema's own words about a formula, behind the (?).
+        // The schema's own words about a formula, in a tooltip behind the (?),
+        // with the Wikipedia article about the thing where the core has one.
         compose.onNodeWithTag("settingsList").performScrollToNode(hasTestTag("explain:a.additive"))
         compose.onNodeWithTag("explain:a.additive").performClick()
         compose.onNodeWithTag("about:a.additive").assertIsDisplayed()
+        compose.onNodeWithTag("read:a.additive").assertIsDisplayed()
         compose.onNodeWithTag("closeSettings").performClick()
     }
 
@@ -113,13 +118,16 @@ class MainActivityTest {
     @Test
     fun theHeaderShowsTheAppsMarkAndTheMenuItsVersion() {
         compose.onNodeWithTag("logo").assertIsDisplayed()
-        // The version is reference, not decoration: it is in the menu, where
-        // tapping it copies the two numbers a report needs.
+        // The version is reference, not decoration: it is in the menu, and it
+        // says which build and which core — the two numbers a report needs.
         compose.onNodeWithText("core", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("more").performClick()
         compose.onNodeWithTag("version").assertIsDisplayed()
-        compose.onNodeWithTag("version").performClick()
-        compose.onNodeWithText("Copied: ", substring = true).assertExists()
+        compose.onNodeWithTag("version").assertTextContains(BuildConfig.VERSION_NAME, substring = true)
+        // Tapping it leaves the app for the repository the build came from,
+        // which is where anything about it is reported. The press itself is
+        // not made here: it would hand the test to a browser.
+        assertEquals("https://github.com/dmitryweiner/synesthesia-android/", REPOSITORY)
     }
 
     @Test
@@ -169,6 +177,13 @@ class MainActivityTest {
 
         compose.onNodeWithTag("viewMode").performClick()
         compose.onNodeWithTag("picture").assertExists()
+    }
+
+    @Test
+    fun theWayIntoFullScreenSaysWhatItIs() {
+        // The button is a glyph, large enough to read; what it means is in its
+        // description, which is what TalkBack reads out.
+        compose.onNodeWithContentDescription("Fill the screen with the picture").assertIsDisplayed()
     }
 
     @Test

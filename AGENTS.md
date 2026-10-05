@@ -56,17 +56,26 @@ committing here.
   stopped one `isDoneWithPlayer` — two threads must never render one player.
 - **Measure first**: performance claims come with a number from a bench,
   written into PLAN.md with a date.
+- **A line the app says is a resource**, never a literal in Kotlin: add it to
+  `app/src/main/res/values/strings.xml` and to all three translations (lint's
+  `MissingTranslation` is an error, so a forgotten one fails `check.sh`).
+  Read it with `stringResource` in a composable — `LocalContext.getString` is
+  not configuration-aware and Android lint rejects it — and capture what a
+  lambda needs before the lambda. What the core computes is left as the core
+  says it.
 - **No build outputs in git.** Every commit on `main` becomes a GitHub
-  **release** — `v0.1.<commits>`, with `synesthesia-<version>.apk` attached
+  **release** — `v<version>`, with `synesthesia-<version>.apk` attached
   (`scripts/release-apk.sh`, run by CI) — and the same APK is the workflow
   artifact `app-debug` until it expires. Debug builds are signed with
   `app/debug.keystore` so APKs from any run install over each other; never
   replace that key.
-- **The version is the commit count**, not a number anyone types:
-  `versionCode` and the patch of `versionName` are `git rev-list --count
-  HEAD` (app/build.gradle.kts), and the screen shows it. CI checks out with
-  `fetch-depth: 0` for that reason — a shallow clone would count its own
-  depth.
+- **The version counts commits**, it is not a number anyone types:
+  `versionCode` is `git rev-list --count HEAD` and `versionName` is
+  `<releaseLine>.<that count − lineOpenedAt>` (app/build.gradle.kts), so the
+  first build of a line is `x.y.0`. Only the line is bumped by hand, and
+  `lineOpenedAt` is set to the count the bump commit will have. ⋮ shows the
+  version with the core's own. CI checks out with `fetch-depth: 0` for that
+  reason — a shallow clone would count its own depth.
 - **Where the instrumented tests run**: on a local machine, on an attached
   phone or emulator (`connectedDebugAndroidTest`). In a cloud session there
   is no emulator (no KVM) — there it is the JVM tests, lint and the APK
@@ -97,8 +106,11 @@ app/                  the application (Compose)
                       (RG16F ping-pong), SimRenderer (the seven passes),
                       PictureView (the GL surface, the rung, the finger),
                       CpuPictureView (the fallback: the core draws, this blits)
-  store/              PointFiles: last-point.json and points.json, written
-                      atomically off the main thread
+  store/              AppFiles: last-point.json with last-name.txt, plus
+                      points.json, view.txt, welcome.txt — written atomically
+                      off the main thread
+  res/values*/        every line the app says itself, in en/ru/he/uk; what
+                      the core computes is not translated (PLAN.md phase 6)
   ui/                 PlayerScreen (the picture, the presses, the status),
                       Picture (the view in Compose), Points (the sheet, 💾,
                       the token), SettingsScreen (generated from the schema),

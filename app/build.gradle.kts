@@ -5,8 +5,9 @@ plugins {
 
 /**
  * Every commit is a build: the patch number is how many commits the branch
- * has. Nothing is bumped by hand, `versionCode` only ever grows, and an APK
- * can be traced back to the commit that made it (`git rev-list --count`).
+ * has *since this release line opened*. Nothing is bumped by hand except the
+ * line itself, `versionCode` only ever grows, and an APK can be traced back
+ * to the commit that made it (`git rev-list --count`).
  *
  * CI must check out with `fetch-depth: 0`, or the count is the depth of the
  * clone rather than the history; a build outside a git checkout gets 1.
@@ -18,6 +19,15 @@ val commitCount: Int = runCatching {
     }.standardOutput.asText.get().trim().toInt()
 }.getOrDefault(0).coerceAtLeast(1)
 
+/**
+ * The release line, bumped by hand when the app has changed enough to say so,
+ * and the commit count at which it opened — so the first build of the line is
+ * `x.y.0` and the ones after it count up. 0.2 opened with the app speaking
+ * four languages; 0.1 was the six phases of PLAN.md, 37 commits of it.
+ */
+val releaseLine = "0.2"
+val lineOpenedAt = 38
+
 android {
     namespace = "io.github.dmitryweiner.synesthesia"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -27,7 +37,7 @@ android {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = commitCount
-        versionName = "0.1.$commitCount"
+        versionName = "$releaseLine.${(commitCount - lineOpenedAt).coerceAtLeast(0)}"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Only the ABIs the Rust core is built for (core/build.gradle.kts).
@@ -48,6 +58,13 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+    }
+
+    // Android 13+ lets the user pick an app's language on its own; the list
+    // comes from the values-* folders (res/resources.properties says which
+    // language values/ itself is).
+    androidResources {
+        generateLocaleConfig = true
     }
 
     buildTypes {

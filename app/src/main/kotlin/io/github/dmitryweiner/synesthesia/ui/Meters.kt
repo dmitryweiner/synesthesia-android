@@ -22,10 +22,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import io.github.dmitryweiner.synesthesia.R
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
 import io.github.dmitryweiner.synesthesia.core.AudioFrame
 
@@ -48,19 +50,19 @@ import io.github.dmitryweiner.synesthesia.core.AudioFrame
 fun Spectrogram(frame: AudioFrame?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Waterfall(frame, Modifier.fillMaxWidth().weight(1f))
-        Bar("loud", frame?.loudness ?: 0.0)
-        Bar("bright", frame?.brightness ?: 0.0)
-        Bar("low", frame?.low ?: 0.0)
-        Bar("mid", frame?.mid ?: 0.0)
-        Bar("high", frame?.high ?: 0.0)
-        Bar("onset", frame?.onset ?: 0.0)
-        CenteredBar("swell", frame?.swell ?: 0.0)
+        Bar(stringResource(R.string.meter_loud), frame?.loudness ?: 0.0)
+        Bar(stringResource(R.string.meter_bright), frame?.brightness ?: 0.0)
+        Bar(stringResource(R.string.meter_low), frame?.low ?: 0.0)
+        Bar(stringResource(R.string.meter_mid), frame?.mid ?: 0.0)
+        Bar(stringResource(R.string.meter_high), frame?.high ?: 0.0)
+        Bar(stringResource(R.string.meter_onset), frame?.onset ?: 0.0)
+        CenteredBar(stringResource(R.string.meter_swell), frame?.swell ?: 0.0)
         val f = frame
         Text(
             if (f == null) {
-                "—"
+                stringResource(R.string.no_numbers)
             } else {
-                "hits ${f.hits} · peak %.3f · limiter %.1f dB · t %.1f s".format(f.peak, f.limiterDb, f.time)
+                stringResource(R.string.frame_stats, f.hits.toInt(), f.peak, f.limiterDb, f.time)
             },
             style = MaterialTheme.typography.bodySmall,
         )
@@ -178,9 +180,10 @@ private fun CenteredBar(label: String, value: Double) {
 fun StatsLine(stats: OutputStats?) {
     Text(
         if (stats == null) {
-            "—"
+            stringResource(R.string.no_numbers)
         } else {
-            "%d Hz · buffer %d ms · core %.1f%% (peak %.0f%%) · underruns %d".format(
+            stringResource(
+                R.string.output_stats,
                 stats.sampleRate, stats.bufferMs, 100 * stats.load, 100 * stats.loadPeak, stats.underruns,
             )
         },

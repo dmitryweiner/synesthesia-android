@@ -85,6 +85,8 @@
     <string name="tab_picture">Picture</string>
     <string name="volume">Volume · %1$s</string>
     <string name="read_more">Read more</string>
+    <string name="reset_sound">Reset the sound to defaults</string>
+    <string name="reset_picture">Reset the picture to defaults</string>
 
     <!-- The meters under the spectrogram. Room for about seven characters. -->
     <string name="meter_loud">loud</string>

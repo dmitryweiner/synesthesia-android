@@ -71,6 +71,8 @@
     <string name="tab_picture">Картинка</string>
     <string name="volume">Гучність · %1$s</string>
     <string name="read_more">Докладніше</string>
+    <string name="reset_sound">Скинути звук до типових</string>
+    <string name="reset_picture">Скинути картинку до типових</string>
 
     <string name="meter_loud">гучн.</string>
     <string name="meter_bright">яскр.</string>

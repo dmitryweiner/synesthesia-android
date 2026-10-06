@@ -71,6 +71,9 @@ fun SettingsScreen(controller: PlaybackController, onClose: () -> Unit, modifier
     val edit = remember { controller.openSettings() }
     val page = remember { settingsPage() }
     var tab by remember { mutableIntStateOf(0) }
+    // A reset changes every control at once, and each one holds its own
+    // remembered value; this is what tells them all to read the point again.
+    var generation by remember { mutableIntStateOf(0) }
     // The tag is the tab's own name, not its label: the label is translated.
     val tabs = listOf(
         Triple(SettingsTab.SOUND, R.string.tab_sound, "tabSound"),
@@ -96,11 +99,26 @@ fun SettingsScreen(controller: PlaybackController, onClose: () -> Unit, modifier
         }
         val shown = page.filter { it.tab == tabs[tab].first }
         LazyColumn(Modifier.fillMaxSize().testTag("settingsList")) {
+            // Begin again from nothing, this half of the point only: the
+            // sound and the picture are reset apart, and ↩ takes it back
+            // because the whole page is one step.
+            item {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.End) {
+                    TextButton(
+                        onClick = {
+                            edit.reset(tabs[tab].first)
+                            controller.settingsEdited()
+                            generation++
+                        },
+                        modifier = Modifier.testTag("resetTab"),
+                    ) { Text(stringResource(if (tab == 0) R.string.reset_sound else R.string.reset_picture)) }
+                }
+            }
             if (tab == 0) {
-                item { Volume(edit, controller) }
+                item { Volume(edit, controller, generation) }
             }
             items(shown, key = { it.id }) { section ->
-                SectionBlock(section, edit, controller)
+                SectionBlock(section, edit, controller, generation)
                 HorizontalDivider()
             }
         }
@@ -109,8 +127,8 @@ fun SettingsScreen(controller: PlaybackController, onClose: () -> Unit, modifier
 
 /** The master gain: not a gene, so it sits above the generated sections. */
 @Composable
-private fun Volume(edit: PointEdit, controller: PlaybackController) {
-    var value by remember { mutableStateOf(edit.masterGain().toFloat()) }
+private fun Volume(edit: PointEdit, controller: PlaybackController, generation: Int) {
+    var value by remember(generation) { mutableStateOf(edit.masterGain().toFloat()) }
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(stringResource(R.string.volume, "%.2f".format(value)), style = MaterialTheme.typography.labelLarge)
         Slider(
@@ -127,7 +145,7 @@ private fun Volume(edit: PointEdit, controller: PlaybackController) {
 }
 
 @Composable
-private fun SectionBlock(section: Section, edit: PointEdit, controller: PlaybackController) {
+private fun SectionBlock(section: Section, edit: PointEdit, controller: PlaybackController, generation: Int) {
     // Sections start closed: there are forty of them, and a point has 250
     // parameters.
     var open by remember(section.id) { mutableStateOf(false) }
@@ -151,12 +169,12 @@ private fun SectionBlock(section: Section, edit: PointEdit, controller: Playback
                 Explain(section)
             }
             if (toggle != null) {
-                SwitchControl(toggle, edit, controller)
+                SwitchControl(toggle, edit, controller, generation)
             }
         }
         if (open) {
             for (control in section.controls) {
-                ControlRow(control, edit, controller)
+                ControlRow(control, edit, controller, generation)
             }
         }
     }
@@ -203,7 +221,7 @@ private fun Explain(section: Section) {
 }
 
 @Composable
-private fun ControlRow(control: Control, edit: PointEdit, controller: PlaybackController) {
+private fun ControlRow(control: Control, edit: PointEdit, controller: PlaybackController, generation: Int) {
     // A control whose switch is off keeps its value and does nothing, so it
     // is shown dimmed rather than hidden (the core says which).
     val active = control.activeIf == null || edit.isActive(control.id)
@@ -211,10 +229,10 @@ private fun ControlRow(control: Control, edit: PointEdit, controller: PlaybackCo
         when (control.kind) {
             ControlKind.SWITCH -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(control.shortLabel, Modifier.weight(1f), style = label(active))
-                SwitchControl(control, edit, controller)
+                SwitchControl(control, edit, controller, generation)
             }
-            ControlKind.CHOICE -> ChoiceControl(control, edit, controller, active)
-            ControlKind.SLIDER -> SliderControl(control, edit, controller, active)
+            ControlKind.CHOICE -> ChoiceControl(control, edit, controller, active, generation)
+            ControlKind.SLIDER -> SliderControl(control, edit, controller, active, generation)
         }
     }
 }
@@ -225,8 +243,8 @@ private fun label(active: Boolean) = MaterialTheme.typography.bodySmall.copy(
 )
 
 @Composable
-private fun SwitchControl(control: Control, edit: PointEdit, controller: PlaybackController) {
-    var on by remember(control.id) { mutableStateOf(edit.value(control.id) >= 0.5) }
+private fun SwitchControl(control: Control, edit: PointEdit, controller: PlaybackController, generation: Int) {
+    var on by remember(control.id, generation) { mutableStateOf(edit.value(control.id) >= 0.5) }
     Switch(
         checked = on,
         onCheckedChange = {
@@ -239,8 +257,14 @@ private fun SwitchControl(control: Control, edit: PointEdit, controller: Playbac
 }
 
 @Composable
-private fun ChoiceControl(control: Control, edit: PointEdit, controller: PlaybackController, active: Boolean) {
-    var index by remember(control.id) { mutableIntStateOf(edit.value(control.id).roundToInt()) }
+private fun ChoiceControl(
+    control: Control,
+    edit: PointEdit,
+    controller: PlaybackController,
+    active: Boolean,
+    generation: Int,
+) {
+    var index by remember(control.id, generation) { mutableIntStateOf(edit.value(control.id).roundToInt()) }
     var open by remember(control.id) { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(control.shortLabel, Modifier.weight(1f), style = label(active))
@@ -264,11 +288,17 @@ private fun ChoiceControl(control: Control, edit: PointEdit, controller: Playbac
 }
 
 @Composable
-private fun SliderControl(control: Control, edit: PointEdit, controller: PlaybackController, active: Boolean) {
+private fun SliderControl(
+    control: Control,
+    edit: PointEdit,
+    controller: PlaybackController,
+    active: Boolean,
+    generation: Int,
+) {
     // A frequency-like control moves in octaves, as the schema says and as a
     // route's depth does: the slider is log, the value is not.
     val scale = remember(control.id) { Scale(control) }
-    var position by remember(control.id) { mutableStateOf(scale.toSlider(edit.value(control.id))) }
+    var position by remember(control.id, generation) { mutableStateOf(scale.toSlider(edit.value(control.id))) }
     val value = scale.toValue(position)
     Column {
         Text("${control.shortLabel} · ${format(value)}", style = label(active))

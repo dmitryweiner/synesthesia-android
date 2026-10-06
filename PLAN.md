@@ -403,12 +403,16 @@ copied into this repository.
      screen's presses name what they did. One session lives per process, as
      one does in the app, so each device test loads the first point first —
      the steps and the history a test leaves are the next one's start.
-   **The scout's defaults, and why:** the web app's surrogate — 24 s at
-   8 kHz, 3 candidates a direction — not the console's full-quality 30 s at
-   22 kHz. It ranks candidates nearly as well (Spearman ρ 0.73 against 0.23
-   for 8 s at 16 kHz) because the slow LFOs need the long window and the
-   fractal metrics do not need the high frequencies, and a phone pays for
-   every second of it in battery. It stays a setting (open question 1), and
+   **The scout's defaults, and why:** a cheap surrogate — 24 s at 11 kHz,
+   3 candidates a direction — not the console's full-quality 30 s at 22 kHz.
+   The long window is what matters (the slow LFOs need it; the fractal
+   metrics do not need the high frequencies), and a phone pays for every
+   second of it in battery. The rate was the web app's 8 kHz until
+   2026-10-06, when the core measured its own chain and found that rate
+   ranks candidates worse here than it did in the browser (Spearman ρ 0.60
+   against 0.73); 11 kHz ranks at 0.79 for 17 % more work, and a job of
+   seven still lands in about two seconds on a phone's six workers
+   (synesthesia-core `2b3274e`). It stays a setting (open question 1), and
    the number that decides it is on screen: the status line says *scouted
    3 + 3 candidates in X.X s* after every batch.
    **On a real phone (2026-10-04, by the user): 👍 and 👎 work, the sound is
@@ -639,6 +643,23 @@ copied into this repository.
      the status line, the section titles, the control labels and
      descriptions, the built-in points' names. They are the same words in
      both apps, and translating them means translating the web app.
+   - **⚙ can start again from nothing** (2026-10-06): a *Reset to defaults*
+     under the tabs, the sound and the picture apart, because they are the
+     two halves of a point and one is often worth keeping. The values are a
+     fresh `AppState::new()` — no second table of defaults — the volume moves
+     only with the sound's reset, and the page is one undoable step as
+     always, so ↩ takes a reset back (`settings::Edit::reset`).
+   - **A tablet emulator, at last** (2026-10-06): `syn-tablet`, API 35
+     arm64, 2560×1600 at 320 dpi, created here because the review's tablet
+     bug could not be fixed blind. It found something no CI emulator could:
+     the app **died on its GL thread at the first frame**, because the
+     prelude's `noise2` is a name GLSL reserves and this driver (ANGLE over
+     Metal) refuses the redeclaration — SwiftShader and the phones tried
+     accept it. The helper is `valueNoise2` now and the core fails its own
+     test on any shader function named something GLSL reserves
+     (synesthesia-core `2ded2e0`). **The header bug itself did not
+     reproduce** there, in either orientation or at three display scales, so
+     it waits for the user's own tablet over adb.
    - **The version scheme** became `line.commits-since-the-line-opened`
      (`app/build.gradle.kts`: `releaseLine`, `lineOpenedAt`), so the line can
      be bumped by hand while `versionCode` stays the commit count and only
@@ -660,13 +681,15 @@ copied into this repository.
 ## Open questions (for the user)
 
 1. **The scout on a phone.** Full-quality renders (30 s at 22 kHz, as the
-   console) or the web's cheaper surrogate (24 s at 8 kHz)? Phase 2 ships the
-   surrogate as the default (3 candidates a direction, on `cores − 2`
-   threads) because battery is the phone's scarce thing, and puts the wall
-   time of every batch on the status line. **Still to decide by measuring**,
-   on a phone: that number, and whether `core %` and underruns move while a
-   batch renders. The length, the rate and the candidate count are settings
-   in phase 5 either way.
+   console) or a cheap surrogate? Phase 2 shipped the surrogate as the
+   default (3 candidates a direction, on `cores − 2` threads) because
+   battery is the phone's scarce thing, and puts the wall time of every
+   batch on the status line. The rate was settled in the core on 2026-10-06
+   by measuring how well each one ranks candidates: **24 s at 11 kHz**
+   (ρ 0.79; the web's 8 kHz scores 0.60 on this chain). **Still to see on a
+   phone**: whether `core %` and underruns move while a batch renders. The
+   length, the rate and the candidate count are settings in phase 5 either
+   way.
 
 Resolved on 2026-10-03: the core language (Rust, decision 1), the separate
 repository (decision 2; `synesthesia-core` created by the user), no

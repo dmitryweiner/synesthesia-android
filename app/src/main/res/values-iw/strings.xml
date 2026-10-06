@@ -75,6 +75,8 @@
     <string name="tab_picture">תמונה</string>
     <string name="volume">עוצמה · %1$s</string>
     <string name="read_more">קראו עוד</string>
+    <string name="reset_sound">אפס את הצליל לברירות המחדל</string>
+    <string name="reset_picture">אפס את התמונה לברירות המחדל</string>
 
     <string name="meter_loud">עוצמה</string>
     <string name="meter_bright">בהירות</string>

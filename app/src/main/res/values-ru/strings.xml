@@ -71,6 +71,8 @@
     <string name="tab_picture">Картинка</string>
     <string name="volume">Громкость · %1$s</string>
     <string name="read_more">Подробнее</string>
+    <string name="reset_sound">Сбросить звук к умолчаниям</string>
+    <string name="reset_picture">Сбросить картинку к умолчаниям</string>
 
     <string name="meter_loud">громк.</string>
     <string name="meter_bright">ярк.</string>

@@ -17,6 +17,9 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.dmitryweiner.synesthesia.core.PointEdit
+import io.github.dmitryweiner.synesthesia.core.SettingsTab
+import io.github.dmitryweiner.synesthesia.core.settingsPage
 import io.github.dmitryweiner.synesthesia.ui.REPOSITORY
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -261,6 +264,33 @@ class MainActivityTest {
         assertEquals(steps + 1u, playback.state.value.session.steps)
         assertTrue(playback.state.value.session.canUndo)
         assertTrue(playback.state.value.session.status.contains("Settings"))
+    }
+
+    @Test
+    fun eitherHalfOfThePointCanBeStartedAgainFromNothing() {
+        val playback = (compose.activity.application as SynesthesiaApp).playback
+        // Which gene belongs to which tab is the core's business, so the
+        // test asks it rather than naming parameters of its own.
+        val page = settingsPage()
+        val sound = requireNotNull(page.first { it.tab == SettingsTab.SOUND && it.toggle != null }.toggle)
+        val picture = requireNotNull(page.first { it.tab == SettingsTab.PICTURE && it.toggle != null }.toggle)
+        val before = PointEdit(playback.pointJson()).use { it.value(sound.id) to it.value(picture.id) }
+
+        compose.onNodeWithTag("openSettings").performClick()
+        compose.onNodeWithTag("tabPicture").performClick()
+        compose.onNodeWithTag("resetTab").performClick()
+        compose.onNodeWithTag("closeSettings").performClick()
+
+        PointEdit(playback.pointJson()).use {
+            assertEquals("the picture starts again", 0.0, it.value(picture.id), 0.0)
+            assertEquals("and the sound is left alone", before.first, it.value(sound.id), 0.0)
+        }
+        // It is an edit like any other: one step, and ↩ takes it back.
+        assertTrue(playback.state.value.session.canUndo)
+        compose.onNodeWithTag("undo").performClick()
+        PointEdit(playback.pointJson()).use {
+            assertEquals("the picture comes back", before.second, it.value(picture.id), 0.0)
+        }
     }
 
     @Test

@@ -155,7 +155,7 @@ class SessionBindingsTest {
         assertTrue(c.scout)
         assertEquals(3u, c.scoutCandidates)
         assertEquals(24.0, c.scoutSeconds, 0.0)
-        assertEquals(8000.0, c.scoutSampleRate, 0.0)
+        assertEquals(11025.0, c.scoutSampleRate, 0.0)
         assertEquals(0u, c.scoutThreads)
     }
 }

@@ -39,7 +39,7 @@ class CoreBindingsTest {
         val json = presetStateJson(0u)
         requireNotNull(json)
         assertTrue(json.contains("\"v\":1"))
-        assertTrue(json.contains("\"presetName\":\"Fractal garden\""))
+        assertTrue(json.contains("\"preset_name\":\"Fractal garden\""))
         assertNull("past the end of the list", presetStateJson(presets().size.toUInt()))
     }
 

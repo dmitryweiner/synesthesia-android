@@ -53,7 +53,7 @@ class CoreOnDeviceTest {
     fun aPresetsPointComesBackAsJson() {
         val json = presetStateJson(0u)
         requireNotNull(json)
-        assertTrue(json.contains("\"presetName\":\"Fractal garden\""))
+        assertTrue(json.contains("\"preset_name\":\"Fractal garden\""))
     }
 
     /**

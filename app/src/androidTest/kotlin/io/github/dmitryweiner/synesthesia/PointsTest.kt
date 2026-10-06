@@ -54,7 +54,7 @@ class PointsTest {
         assertEquals(point, files.lastPoint())
         val onDisk = File(dir, "last-point.json")
         assertTrue("named as the console names it", onDisk.exists())
-        assertTrue(onDisk.readText().contains("\"presetName\""))
+        assertTrue(onDisk.readText().contains("\"preset_name\""))
         assertTrue("no temporary left behind", dir.listFiles()!!.none { it.name.endsWith(".tmp") })
     }
 
@@ -95,7 +95,7 @@ class PointsTest {
         // A load settles at once, so the last point is written by now.
         val appFiles = AppFiles(context.filesDir)
         waitFor("the last point to reach the disk") {
-            appFiles.lastPoint()?.contains("\"presetName\":\"$name\"") == true
+            appFiles.lastPoint()?.contains("\"preset_name\":\"$name\"") == true
         }
         assertNotNull(appFiles.lastPoint())
     }
@@ -111,7 +111,7 @@ class PointsTest {
             session.like(0.0)
             session.pointJson()
         }
-        assertTrue("a pressed point has no name in it", !pressed.contains("presetName"))
+        assertTrue("a pressed point has no name in it", !pressed.contains("preset_name"))
         files.saveLastPoint(pressed)
         files.saveLastName("Fractal garden")
         assertTrue(files.awaitWrites(5_000))
@@ -127,6 +127,22 @@ class PointsTest {
         File(dir, "last-name.txt").delete()
         PlaybackController.startSession(files, config).use { nameless ->
             assertEquals("", nameless.view().pointName)
+        }
+    }
+
+    @Test
+    fun aKeptPointFromBeforeTheRenameComesBackUnderItsOwnName() {
+        // Files written before core bcd68a3 spell the name `presetName`: such a
+        // point is still a kept one, and its own name wins over the screen's.
+        val config = defaultSessionConfig()
+        val now = requireNotNull(presetStateJson(3u))
+        val name = org.json.JSONObject(now).getString("preset_name")
+        files.saveLastPoint(now.replace("\"preset_name\"", "\"presetName\""))
+        files.saveLastName("what the screen said")
+        assertTrue(files.awaitWrites(5_000))
+
+        PlaybackController.startSession(files, config).use { back ->
+            assertEquals(name, back.view().name)
         }
     }
 

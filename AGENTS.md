@@ -65,7 +65,7 @@ committing here.
   only the once it was proved: make the mistake on purpose, watch the build
   go red, put it back. The same goes for the premise under a test — read the
   code that makes it true (a 👍 drops the point's name in
-  `syn-session`'s `after_action`, so the JSON has no `presetName`) rather
+  `syn-session`'s `after_action`, so the JSON has no `preset_name`) rather
   than remembering that it does. Two claims checked that way in this project
   were wrong, and one of them was already in PLAN.md as a fact.
 - **A line the app says is a resource**, never a literal in Kotlin: add it to

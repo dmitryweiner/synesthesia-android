@@ -310,7 +310,10 @@ copied into this repository.
    `preset_name`, the web app's key is `presetName`; the core now writes
    `presetName` and reads both. **Agreed afterwards (2026-10-03): the name
    becomes `preset_name` in all three apps, and the web app changes** — the
-   steps are in synesthesia-core's TODO.md. Versions: AGP 9.4.1
+   steps are in synesthesia-core's TODO.md. **Done 2026-10-06 (core
+   `bcd68a3`, pinned here):** points are written with `preset_name`; files
+   from before, with `presetName`, still load under their own name
+   (PointsTest). Versions: AGP 9.4.1
    with its built-in Kotlin 2.4.20, Gradle 9.8.0, Compose BOM 2026.09.00,
    UniFFI 0.32.2, JNA 5.19.1, NDK 27.2.
 1. ✅ **Sound, in the background.** The foreground service with the

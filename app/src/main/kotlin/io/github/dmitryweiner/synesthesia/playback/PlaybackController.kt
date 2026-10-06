@@ -556,7 +556,8 @@ class PlaybackController(
                     // A kept point carries its own name, and "" takes it; a
                     // point left mid-search carries none, and then the name
                     // that was on screen says where it came from.
-                    return if (json.contains("\"presetName\"")) {
+                    // (`preset_name`; a file from before core bcd68a3 says `presetName`.)
+                    return if (json.contains("\"preset_name\"") || json.contains("\"presetName\"")) {
                         Session("", json, config)
                     } else {
                         Session.restored(files.lastName() ?: "", json, config)

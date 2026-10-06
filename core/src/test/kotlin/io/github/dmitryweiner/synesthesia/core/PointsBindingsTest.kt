@@ -32,7 +32,7 @@ class PointsBindingsTest {
         assertEquals(listOf("Dawn", "Dusk"), back.names())
         assertEquals("Dusk", back.nameAt(1u))
         val point = requireNotNull(back.pointJson(0u))
-        assertTrue(point.contains("\"presetName\":\"Dawn\""))
+        assertTrue(point.contains("\"preset_name\":\"Dawn\""))
 
         assertTrue(back.forget(0u))
         assertEquals(listOf("Dusk"), back.names())

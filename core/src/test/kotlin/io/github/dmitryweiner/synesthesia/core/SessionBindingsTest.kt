@@ -36,7 +36,7 @@ class SessionBindingsTest {
             assertFalse(view.canUndo)
             assertFalse(view.morphing)
             assertFalse(session.wantsTick())
-            assertTrue(session.pointJson().contains("\"presetName\":\"Fractal garden\""))
+            assertTrue(session.pointJson().contains("\"preset_name\":\"Fractal garden\""))
         }
     }
 
@@ -82,7 +82,7 @@ class SessionBindingsTest {
             assertEquals(0u, view.steps)
             assertFalse("a load clears the history", view.canUndo)
             val switched = fx.filterIsInstance<SessionEffect.SwitchTo>().single().pointJson
-            assertTrue(switched.contains("\"presetName\":\"${presets()[5].name}\""))
+            assertTrue(switched.contains("\"preset_name\":\"${presets()[5].name}\""))
         }
     }
 

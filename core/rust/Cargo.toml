@@ -12,7 +12,7 @@ edition = "2021"
 license = "GPL-3.0-only"
 
 [workspace.dependencies]
-syn-ffi = { git = "https://github.com/dmitryweiner/synesthesia-core", rev = "2ee092fbf63c30ec3f02db8b697844357928f722" }
+syn-ffi = { git = "https://github.com/dmitryweiner/synesthesia-core", rev = "bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077" }
 
 [profile.release]
 opt-level = 3

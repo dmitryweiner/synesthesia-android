@@ -218,6 +218,16 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
     bench screen was dropped on 2026-10-04 at the user's judgement — see
     phase 6; `syn_player::render_stats` is still the core's offline
     measurement, and its tests use it.)*
+13. **Points may carry recorded samples and rhythms** *(agreed in the core
+    2026-10-15, synesthesia-core PLAN-SAMPLES-SCRIPTS.md)*: owls, crickets,
+    glass, drum grooves as the point's `seq` layers, played by the core.
+    The sample bank (`bank.bin`, synesthesia-samples' release `bank-v1`)
+    is downloaded by the build, checked by its SHA-256 and packed as an
+    asset (+17.6 MB to the APK). `PlaybackController` reads it on a thread
+    of its own, decodes every built-in point's sounds ahead (`SoundBank.
+    prepare`) and hands it to the player (`SoundPlayer.setBank`): decoding
+    never costs the audio thread or a frame. Five presets use layers:
+    Night meadow, Workshop, Glass loom, Molten groove, Bell walk.
 
 ## Architecture
 

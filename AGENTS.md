@@ -19,6 +19,20 @@ scripts/check.sh               # after every change
 ./gradlew connectedDebugAndroidTest # instrumented tests, with a phone or emulator attached
 ```
 
+**The app is built by CI, in GitHub Actions** (`.github/workflows/check.yml`),
+not on a laptop: every push runs `check` (the same `scripts/check.sh`, then
+the debug APK as an artifact) and `emulator` (the instrumented tests on
+emulators); a push to `main` that passes both is published as a GitHub
+release named by its version (`release`, `scripts/release-apk.sh`) — that
+APK is the one the user installs. So a change is done when CI is green on
+`main` (`gh run list`, `gh run watch`), not when it builds here. A local
+`scripts/check.sh` is for catching a failure before the push; on a Mac
+without a system JDK it needs Android Studio's:
+`JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"`.
+The build downloads the sample bank (`fetchBank` in `app/build.gradle.kts`:
+synesthesia-samples' release asset, pinned by tag and SHA-256) into the
+APK's assets; it is never committed.
+
 A **comment-only change in the core still costs a re-pin**: a new `rev` in
 `core/rust/Cargo.toml` rebuilds the Rust side here and in CI, so a wording
 fix there is best carried by the next real commit rather than pushed alone.

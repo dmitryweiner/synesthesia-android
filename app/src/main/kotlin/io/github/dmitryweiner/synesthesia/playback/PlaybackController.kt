@@ -27,11 +27,13 @@ import io.github.dmitryweiner.synesthesia.core.Session
 import io.github.dmitryweiner.synesthesia.core.SessionConfig
 import io.github.dmitryweiner.synesthesia.core.SessionEffect
 import io.github.dmitryweiner.synesthesia.core.SessionView
+import io.github.dmitryweiner.synesthesia.core.SoundBank
 import io.github.dmitryweiner.synesthesia.core.SoundPlayer
 import io.github.dmitryweiner.synesthesia.core.defaultSessionConfig
 import io.github.dmitryweiner.synesthesia.core.pointFromLink
 import io.github.dmitryweiner.synesthesia.core.pointFromToken
 import io.github.dmitryweiner.synesthesia.core.pointToken
+import io.github.dmitryweiner.synesthesia.core.presetStateJson
 import io.github.dmitryweiner.synesthesia.core.presets
 import io.github.dmitryweiner.synesthesia.gl.PictureSource
 import io.github.dmitryweiner.synesthesia.store.AppFiles
@@ -169,6 +171,35 @@ class PlaybackController(
         }
     }
     private var noisyRegistered = false
+
+    /**
+     * The recorded samples the points' layers play — the asset `bank.bin`
+     * (synesthesia-samples, fetched by the build). Read, parsed and handed to
+     * the player on a thread of its own, with every built-in point's sounds
+     * decoded ahead: a sound takes tens of milliseconds to decode, which
+     * must cost neither the audio thread nor a frame of the screen. Until it
+     * is here, a point's synth drums play and its samples do not.
+     */
+    @Volatile private var bank: SoundBank? = null
+    private val bankThread = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "syn-bank").apply { priority = Thread.MIN_PRIORITY }
+    }
+
+    init {
+        val live = session.livePointJson()
+        bankThread.execute {
+            val loaded = runCatching { SoundBank(context.assets.open("bank.bin").use { it.readBytes() }) }
+                .onFailure { Log.w(TAG, "no sample bank; the layers' samples stay silent", it) }
+                .getOrNull() ?: return@execute
+            for (json in presets.mapNotNull { presetStateJson(it.index) } + live) {
+                runCatching { loaded.prepare(json) }
+            }
+            main.post {
+                bank = loaded
+                player?.let { p -> bankThread.execute { p.setBank(loaded) } }
+            }
+        }
+    }
 
     // --- what the user presses ---------------------------------------------
 
@@ -437,7 +468,9 @@ class PlaybackController(
     private fun startOutput() {
         val existing = player
         if (existing == null) {
-            player = SoundPlayer(sampleRate.toUInt(), session.livePointJson())
+            val created = SoundPlayer(sampleRate.toUInt(), session.livePointJson())
+            player = created
+            bank?.let { b -> bankThread.execute { created.setBank(b) } }
         } else {
             // The point may have moved while nothing was playing.
             existing.setPoint(session.livePointJson())

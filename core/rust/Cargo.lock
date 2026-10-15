@@ -188,6 +188,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 
 [[package]]
+name = "claxon"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bfbf56724aa9eca8afa4fcfadeb479e722935bb2a0900c2d37e0cc477af0688"
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -616,9 +622,10 @@ dependencies = [
 [[package]]
 name = "syn-core"
 version = "0.1.0"
-source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077#bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077"
+source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=fe04915f61587dad9e28ff5c236db7a6140dc554#fe04915f61587dad9e28ff5c236db7a6140dc554"
 dependencies = [
  "base64",
+ "claxon",
  "rayon",
  "serde",
  "serde_json",
@@ -628,7 +635,7 @@ dependencies = [
 [[package]]
 name = "syn-ffi"
 version = "0.1.0"
-source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077#bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077"
+source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=fe04915f61587dad9e28ff5c236db7a6140dc554#fe04915f61587dad9e28ff5c236db7a6140dc554"
 dependencies = [
  "serde_json",
  "syn-core",
@@ -641,7 +648,7 @@ dependencies = [
 [[package]]
 name = "syn-player"
 version = "0.1.0"
-source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077#bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077"
+source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=fe04915f61587dad9e28ff5c236db7a6140dc554#fe04915f61587dad9e28ff5c236db7a6140dc554"
 dependencies = [
  "serde_json",
  "syn-core",
@@ -650,7 +657,7 @@ dependencies = [
 [[package]]
 name = "syn-session"
 version = "0.1.0"
-source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077#bcd68a30d6f530ae83847b3f7b9d2eb3a7bd1077"
+source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=fe04915f61587dad9e28ff5c236db7a6140dc554#fe04915f61587dad9e28ff5c236db7a6140dc554"
 dependencies = [
  "rayon",
  "serde",

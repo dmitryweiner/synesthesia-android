@@ -1,3 +1,6 @@
+import java.net.URI
+import java.security.MessageDigest
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -85,6 +88,51 @@ android {
         // So the screen can say which build it is, which is the point of a
         // version per commit.
         buildConfig = true
+    }
+}
+
+/**
+ * The recorded samples the points' layers play (synesthesia-core
+ * PLAN-SAMPLES-SCRIPTS.md S7): synesthesia-samples' release asset, pinned by
+ * tag and SHA-256 here, downloaded once into the build and packed as the
+ * asset `bank.bin` — never committed. Bump both together for a new bank.
+ */
+val bankUrl = "https://github.com/dmitryweiner/synesthesia-samples/releases/download/bank-v1/bank.bin"
+val bankSha256 = "c6ec462a3e057b41ca82a918427f7d7be4efd1c0a437f80a628e2f1cac9bd335"
+
+abstract class FetchBank : DefaultTask() {
+    @get:Input
+    abstract val url: Property<String>
+
+    @get:Input
+    abstract val sha256: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun fetch() {
+        val file = outputDir.get().file("bank.bin").asFile
+        fun hex(bytes: ByteArray): String =
+            MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        if (file.exists() && hex(file.readBytes()) == sha256.get()) return
+        val bytes = URI(url.get()).toURL().readBytes()
+        check(hex(bytes) == sha256.get()) { "${url.get()}: SHA-256 ${hex(bytes)}, pinned ${sha256.get()}" }
+        file.parentFile.mkdirs()
+        file.writeBytes(bytes)
+    }
+}
+
+val fetchBank = tasks.register<FetchBank>("fetchBank") {
+    description = "Downloads the sample bank (bank.bin) by its pinned tag and SHA-256."
+    url.set(bankUrl)
+    sha256.set(bankSha256)
+    outputDir.set(layout.buildDirectory.dir("generated/bank"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(fetchBank, FetchBank::outputDir)
     }
 }
 

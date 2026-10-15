@@ -696,6 +696,23 @@ copied into this repository.
 | scout, 3 + 3 candidates | < 4 s wall, measured energy per press noted |
 | cold start → first sound | < 500 ms after ▶ |
 
+## Open: the sound tests flake on API 35 since the sample bank (2026-10-15)
+
+`SearchTest` timed out on the API 35 emulator in two of the five CI runs
+after the bank arrived (`b83ff80`: `aBuiltInPointLoadsWhileTheSoundPlays`,
+"the sound to survive the switch"; `6e56c23`:
+`aPressMorphsTheLiveSoundAndSettlesOnTheNewPoint`, "the sound to go on";
+both `playing=false service=false frame=null message=null`); API 26 and
+the other three runs were green, and the tests had been green on API 35
+since `3f2e002`. Suspects, unproven: the bank thread (reading 17.6 MB and
+decoding every built-in point's sounds at start) competing with the
+sound's start on a slow emulator, or the main thread waiting on
+`syn_player`'s layers lock while `setBank`/`switchTo` build a program.
+Next: run `SearchTest` on an API 35 emulator with the bank's prepare
+delayed or skipped, and with a timing of `SoundPlayer.setBank`; if it is
+the lock, build the program outside it. Until then a red API 35 run is
+re-run rather than ignored.
+
 ## Open questions (for the user)
 
 1. **The scout on a phone.** Full-quality renders (30 s at 22 kHz, as the

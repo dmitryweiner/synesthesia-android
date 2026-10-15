@@ -226,8 +226,13 @@ Numbered so later docs can cite them. Each agreed decision carries the date.
     asset (+17.6 MB to the APK). `PlaybackController` reads it on a thread
     of its own, decodes every built-in point's sounds ahead (`SoundBank.
     prepare`) and hands it to the player (`SoundPlayer.setBank`): decoding
-    never costs the audio thread or a frame. Five presets use layers:
-    Night meadow, Workshop, Glass loom, Molten groove, Bell walk.
+    never costs the audio thread or a frame. Six presets use layers:
+    Night meadow, Workshop, Glass loom, Molten groove, Bell walk, Magic
+    forest. ⚙ Settings' Layer 1–4 sections are generated from the genes,
+    with what the genes do not carry added here: the layer's pattern
+    (checked by the core as it is typed) and its humanize. The picture
+    no longer strobes with a drum: the core slews what it reads of the
+    sound (`sim::calm`, at most one flash a second, WCAG allows three).
 
 ## Architecture
 

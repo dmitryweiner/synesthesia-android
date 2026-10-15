@@ -351,9 +351,10 @@ copied into this repository.
    - `PlaybackController` (one per process): audio focus (a call pauses and
      the end of it resumes; losing it for good stops), headphones unplugged
      stops, a partial wake lock while playing.
-   - `PlaybackService`: foreground service of type `mediaPlayback`, a
+   - `PlaybackService`: foreground service of type `mediaPlayback`, the
      `MediaSession` (lock screen, headphone buttons, system media
-     controls), a MediaStyle notification with ⏹ / ▶; after a stop the
+     controls — the controller's, one per process, never released between
+     runs), a MediaStyle notification with ⏹ / ▶; after a stop the
      notification stays with ▶ and the service ends.
    - The screen: ▶/⏹, the point, the features as meters and a 64-band
      spectrum, the output's cost (`core %` = time in the core per second of
@@ -696,22 +697,31 @@ copied into this repository.
 | scout, 3 + 3 candidates | < 4 s wall, measured energy per press noted |
 | cold start → first sound | < 500 ms after ▶ |
 
-## Open: the sound tests flake on API 35 since the sample bank (2026-10-15)
+## Solved: the sound stopped by itself on API 35 (2026-10-15)
 
-`SearchTest` timed out on the API 35 emulator in two of the five CI runs
-after the bank arrived (`b83ff80`: `aBuiltInPointLoadsWhileTheSoundPlays`,
-"the sound to survive the switch"; `6e56c23`:
-`aPressMorphsTheLiveSoundAndSettlesOnTheNewPoint`, "the sound to go on";
-both `playing=false service=false frame=null message=null`); API 26 and
-the other three runs were green, and the tests had been green on API 35
-since `3f2e002`. Suspects, unproven: the bank thread (reading 17.6 MB and
-decoding every built-in point's sounds at start) competing with the
-sound's start on a slow emulator, or the main thread waiting on
-`syn_player`'s layers lock while `setBank`/`switchTo` build a program.
-Next: run `SearchTest` on an API 35 emulator with the bank's prepare
-delayed or skipped, and with a timing of `SoundPlayer.setBank`; if it is
-the lock, build the program outside it. Until then a red API 35 run is
-re-run rather than ignored.
+`SearchTest` timed out on the API 35 emulator in two of five CI runs after
+the bank arrived (`b83ff80`, `6e56c23`), both with `playing=false
+service=false message=null` — the sound had started and then been stopped,
+not failed: no `message` means `stop()`, not `fail()`. The logcat in the
+runs' `android-test-reports-35` artifact says who: `MediaSessionService:
+… callingPackage:com.android.systemui … reason:MediaSessionRecord:stop`,
+0.7–1.3 s after ▶, right after SystemUI's `MediaDataManager` logged
+`session destroyed for 0|…|1` and `Removing still-active player`.
+
+The cause was ours: every run of `PlaybackService` made a new
+`MediaSession` and released it in `onDestroy`, while the notification
+left with ▶ stayed under the same key with the dead session's token.
+SystemUI drops such a player as dead — late — and the `stop` lands on
+the session that key has by then: the next run's, playing. The tests
+start the next run within a second of the last stop, which is what made
+it show there; the bank is not the cause (it may only have moved the
+timing). Now the session is `PlaybackController.mediaSession`, one per
+process and never released, so a notification's token is always alive
+(which also makes ▶ in the system's media controls work after a stop).
+`PlaybackTest.theNotificationKeepsOneLiveSessionFromRunToRun` fails on
+the old code (two tokens) and passes now; the whole instrumented suite
+passed twice on the local API 35 emulator. Whether CI's API 35 is steady
+again takes a few runs to say.
 
 ## Open questions (for the user)
 

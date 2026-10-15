@@ -1,18 +1,22 @@
 package io.github.dmitryweiner.synesthesia.playback
 
 import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.session.MediaSession
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.annotation.StringRes
+import io.github.dmitryweiner.synesthesia.MainActivity
 import io.github.dmitryweiner.synesthesia.R
 import io.github.dmitryweiner.synesthesia.audio.AudioOutput
 import io.github.dmitryweiner.synesthesia.audio.OutputStats
@@ -136,6 +140,44 @@ class PlaybackController(
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val main = Handler(Looper.getMainLooper())
+
+    /**
+     * The media session — lock screen, headphone buttons, the system's media
+     * controls; [PlaybackService] publishes the state on it and puts its
+     * token in the notification. One for the life of the process, not one
+     * per run of the service: the notification stays after a stop, under the
+     * same key, and a session released under it makes SystemUI drop that
+     * media player as dead — late, and by calling `stop` on whichever session
+     * the key has by then, which is the next run's, playing (seen on the
+     * API 35 emulator: the sound stopped a second after it started, with no
+     * message, PLAN.md).
+     */
+    val mediaSession: MediaSession = MediaSession(context, "Synesthesia").apply {
+        setCallback(
+            object : MediaSession.Callback() {
+                override fun onPlay() = play()
+                override fun onPause() = stop()
+                override fun onStop() = stop()
+
+                override fun onCustomAction(action: String, extras: Bundle?) {
+                    when (action) {
+                        PlaybackService.ACTION_LIKE -> like()
+                        PlaybackService.ACTION_DISLIKE -> dislike()
+                    }
+                }
+            },
+            main,
+        )
+        setSessionActivity(
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            ),
+        )
+        isActive = true
+    }
     // The GL thread reads these through soundFrame(); only this thread writes.
     @Volatile private var player: SoundPlayer? = null
 

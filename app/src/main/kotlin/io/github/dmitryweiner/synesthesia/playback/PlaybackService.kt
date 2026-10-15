@@ -11,7 +11,6 @@ import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
-import android.os.Bundle
 import android.os.IBinder
 import io.github.dmitryweiner.synesthesia.MainActivity
 import io.github.dmitryweiner.synesthesia.R
@@ -67,24 +66,7 @@ class PlaybackService : Service() {
             NotificationChannel(CHANNEL_ID, getString(R.string.channel_playback), NotificationManager.IMPORTANCE_LOW)
                 .apply { setShowBadge(false) },
         )
-        session = MediaSession(this, "Synesthesia").apply {
-            setCallback(
-                object : MediaSession.Callback() {
-                    override fun onPlay() = playback.play()
-                    override fun onPause() = playback.stop()
-                    override fun onStop() = playback.stop()
-
-                    override fun onCustomAction(action: String, extras: Bundle?) {
-                        when (action) {
-                            ACTION_LIKE -> playback.like()
-                            ACTION_DISLIKE -> playback.dislike()
-                        }
-                    }
-                },
-            )
-            setSessionActivity(openAppIntent())
-            isActive = true
-        }
+        session = playback.mediaSession
         scope.launch { playback.state.collect(::follow) }
     }
 
@@ -109,7 +91,9 @@ class PlaybackService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
-        session.release()
+        // Not session.release(): the session is the process's (see
+        // PlaybackController.mediaSession), and the notification left behind
+        // still points at it.
         isInForeground = false
         super.onDestroy()
     }

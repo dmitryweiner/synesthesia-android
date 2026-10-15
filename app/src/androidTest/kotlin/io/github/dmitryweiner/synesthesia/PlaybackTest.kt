@@ -1,8 +1,12 @@
 package io.github.dmitryweiner.synesthesia
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
+import android.media.session.MediaController
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.os.Build
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -96,6 +100,49 @@ class PlaybackTest {
         // A foreground service may only be started by an app that is in
         // front, as it is when the user presses ▶.
         ActivityScenario.launch(MainActivity::class.java).use { playInFront() }
+    }
+
+    /**
+     * The notification left behind by a stop and the one of the next run
+     * carry the same session, and it is alive: a session released under a
+     * notification that stays makes SystemUI drop the player as dead and call
+     * `stop` on the next run's session — the sound went silent a second after
+     * ▶ on the API 35 emulator.
+     */
+    @Test
+    fun theNotificationKeepsOneLiveSessionFromRunToRun() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        }
+        val playback = (context as SynesthesiaApp).playback
+        ActivityScenario.launch(MainActivity::class.java).use {
+            playInFront()
+            val left = waitForToken("the stopped notification") { true }
+            val controller = MediaController(context, left)
+            assertEquals(PlaybackState.STATE_STOPPED, controller.playbackState?.state)
+
+            instrumentation.runOnMainSync { playback.play() }
+            waitFor("service in front") { PlaybackService.isInForeground }
+            val next = waitForToken("the playing notification") { playback.state.value.playing }
+            assertEquals(left, next)
+            waitFor("the session to say it plays") { controller.playbackState?.state == PlaybackState.STATE_PLAYING }
+
+            instrumentation.runOnMainSync { playback.stop() }
+            waitFor("service out of front") { !PlaybackService.isInForeground }
+        }
+    }
+
+    /** The session token in our notification, once [ready] holds and the notification has one. */
+    @Suppress("DEPRECATION") // getParcelable(key, class) is API 33+
+    private fun waitForToken(what: String, ready: () -> Boolean): MediaSession.Token {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        var token: MediaSession.Token? = null
+        waitFor(what) {
+            token = nm.activeNotifications.firstOrNull { it.id == 1 }?.notification?.extras
+                ?.getParcelable(Notification.EXTRA_MEDIA_SESSION)
+            ready() && token != null
+        }
+        return requireNotNull(token)
     }
 
     private fun playInFront() {

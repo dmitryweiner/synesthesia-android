@@ -137,9 +137,9 @@ app/                  the application (Compose)
   playback/           PlaybackController — the core's Session plus what it
                       has none of: a clock (nanoTime as `now`), a 25 ms tick
                       while `wantsTick`, a thread for the scout, audio focus,
-                      noisy, the wake lock;
-                      PlaybackService (foreground, MediaSession, notification
-                      with 👎 ⏹/▶ 👍)
+                      noisy, the wake lock, the one MediaSession;
+                      PlaybackService (foreground, notification with
+                      👎 ⏹/▶ 👍, publishes the state on that session)
   gl/                 the picture: Program (shaders → passes), Targets
                       (RG16F ping-pong), SimRenderer (the seven passes),
                       PictureView (the GL surface, the rung, the finger),

@@ -13,16 +13,16 @@ class CoreBindingsTest {
     @Test
     fun theBuiltInPointsComeFromTheCoreInTheWebAppsOrder() {
         val list = presets()
-        assertEquals(20, list.size)
+        assertEquals(21, list.size)
         assertEquals(list.indices.toList(), list.map { it.index.toInt() })
         assertEquals("Fractal garden", list.first().name)
         // The three the web app added last: they use the tanpura, the singing
         // bowl, the delay's shimmer and the pink LFOs.
         assertEquals(listOf("Overtone steppe", "Candle glaze", "Tanpura halo"), list.slice(12..14).map { it.name })
-        // Then the five with recorded samples and drums (the core's S5).
+        // Then the six with recorded samples and drums (the core's S5).
         assertEquals(
-            listOf("Night meadow", "Workshop", "Glass loom", "Molten groove", "Bell walk"),
-            list.takeLast(5).map { it.name },
+            listOf("Night meadow", "Workshop", "Glass loom", "Molten groove", "Bell walk", "Magic forest"),
+            list.takeLast(6).map { it.name },
         )
     }
 

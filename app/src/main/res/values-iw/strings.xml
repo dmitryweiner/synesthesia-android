@@ -98,4 +98,7 @@
     <string name="msg_link_needs_web">הקישור מצביע על נקודה שנשמרה באפליקציית הווב, והאפליקציה הזאת לא יכולה להביא אותה</string>
     <string name="msg_focus_denied">אפליקציה אחרת מחזיקה בצליל (שיחה?)</string>
     <string name="msg_sound_stopped">הצליל נעצר: %1$s</string>
+    <string name="layer_pattern">תבנית</string>
+    <string name="layer_pattern_hint">למשל 0 ~ [0 1] ~ , hh*8?</string>
+    <string name="layer_humanize">אנושיות</string>
 </resources>

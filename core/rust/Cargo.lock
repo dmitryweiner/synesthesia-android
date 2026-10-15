@@ -622,7 +622,7 @@ dependencies = [
 [[package]]
 name = "syn-core"
 version = "0.1.0"
-source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=fe04915f61587dad9e28ff5c236db7a6140dc554#fe04915f61587dad9e28ff5c236db7a6140dc554"
+source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=537edc26e0111b0d82e3992d8f64c518a9ea9d29#537edc26e0111b0d82e3992d8f64c518a9ea9d29"
 dependencies = [
  "base64",
  "claxon",
@@ -635,7 +635,7 @@ dependencies = [
 [[package]]
 name = "syn-ffi"
 version = "0.1.0"
-source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=fe04915f61587dad9e28ff5c236db7a6140dc554#fe04915f61587dad9e28ff5c236db7a6140dc554"
+source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=537edc26e0111b0d82e3992d8f64c518a9ea9d29#537edc26e0111b0d82e3992d8f64c518a9ea9d29"
 dependencies = [
  "serde_json",
  "syn-core",
@@ -648,7 +648,7 @@ dependencies = [
 [[package]]
 name = "syn-player"
 version = "0.1.0"
-source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=fe04915f61587dad9e28ff5c236db7a6140dc554#fe04915f61587dad9e28ff5c236db7a6140dc554"
+source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=537edc26e0111b0d82e3992d8f64c518a9ea9d29#537edc26e0111b0d82e3992d8f64c518a9ea9d29"
 dependencies = [
  "serde_json",
  "syn-core",
@@ -657,7 +657,7 @@ dependencies = [
 [[package]]
 name = "syn-session"
 version = "0.1.0"
-source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=fe04915f61587dad9e28ff5c236db7a6140dc554#fe04915f61587dad9e28ff5c236db7a6140dc554"
+source = "git+https://github.com/dmitryweiner/synesthesia-core?rev=537edc26e0111b0d82e3992d8f64c518a9ea9d29#537edc26e0111b0d82e3992d8f64c518a9ea9d29"
 dependencies = [
  "rayon",
  "serde",

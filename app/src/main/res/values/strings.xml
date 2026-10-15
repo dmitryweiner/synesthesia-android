@@ -110,4 +110,7 @@
     <string name="msg_link_needs_web">That link points at a saved point on the web app, which this app cannot fetch</string>
     <string name="msg_focus_denied">Another app is holding the sound (a call?)</string>
     <string name="msg_sound_stopped">The sound stopped: %1$s</string>
+    <string name="layer_pattern">Pattern</string>
+    <string name="layer_pattern_hint">e.g. 0 ~ [0 1] ~ , hh*8?</string>
+    <string name="layer_humanize">Humanize</string>
 </resources>

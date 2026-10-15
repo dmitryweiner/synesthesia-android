@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.dmitryweiner.synesthesia.core.PointEdit
 import io.github.dmitryweiner.synesthesia.core.SettingsTab
@@ -77,6 +78,24 @@ class MainActivityTest {
         compose.onNodeWithTag("explain:a.additive").performClick()
         compose.onNodeWithTag("about:a.additive").assertIsDisplayed()
         compose.onNodeWithTag("read:a.additive").assertIsDisplayed()
+        compose.onNodeWithTag("closeSettings").performClick()
+    }
+
+    @Test
+    fun aLayersPatternIsWrittenInSettingsAndAWrongOneSaysWhy() {
+        compose.onNodeWithTag("openSettings").performClick()
+        compose.onNodeWithTag("settingsList").performScrollToNode(hasText("Layer 1", substring = true))
+        compose.onNodeWithText("Layer 1", substring = true).performClick()
+        compose.onNodeWithTag("settingsList").performScrollToNode(hasTestTag("seq.0.pattern"))
+        // The core checks it as it is typed: an unclosed bracket is named,
+        // and nothing is taken until it parses.
+        compose.onNodeWithTag("seq.0.pattern").performTextReplacement("[0 1")
+        compose.onNodeWithText("unclosed bracket", substring = true).assertExists()
+        compose.onNodeWithTag("seq.0.pattern").performTextReplacement("0 ~ [0 1] ~")
+        compose.onAllNodesWithText("unclosed bracket", substring = true).fetchSemanticsNodes().let {
+            assertEquals("a pattern that parses says nothing", 0, it.size)
+        }
+        compose.onNodeWithTag("settingsList").performScrollToNode(hasTestTag("seq.0.humanize"))
         compose.onNodeWithTag("closeSettings").performClick()
     }
 

@@ -18,6 +18,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
@@ -35,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -149,6 +151,11 @@ private fun SectionBlock(section: Section, edit: PointEdit, controller: Playback
     // Sections start closed: there are forty of them, and a point has 250
     // parameters.
     var open by remember(section.id) { mutableStateOf(false) }
+    // A sample/drum layer (`seq.N`) has two things the genes do not carry,
+    // its own pattern and its humanize; the rhythm choice and the pattern
+    // field each redraw the other through this.
+    val layer = LAYER.matchEntire(section.id)?.groupValues?.get(1)?.toUInt()
+    var tick by remember(section.id) { mutableIntStateOf(0) }
     val toggle = section.toggle
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
@@ -174,7 +181,11 @@ private fun SectionBlock(section: Section, edit: PointEdit, controller: Playback
         }
         if (open) {
             for (control in section.controls) {
-                ControlRow(control, edit, controller, generation)
+                ControlRow(control, edit, controller, generation, tick) { tick++ }
+            }
+            if (layer != null) {
+                PatternField(layer, edit, controller, generation, tick) { tick++ }
+                HumanizeSlider(layer, edit, controller, generation)
             }
         }
     }
@@ -221,7 +232,14 @@ private fun Explain(section: Section) {
 }
 
 @Composable
-private fun ControlRow(control: Control, edit: PointEdit, controller: PlaybackController, generation: Int) {
+private fun ControlRow(
+    control: Control,
+    edit: PointEdit,
+    controller: PlaybackController,
+    generation: Int,
+    tick: Int = 0,
+    onChoice: () -> Unit = {},
+) {
     // A control whose switch is off keeps its value and does nothing, so it
     // is shown dimmed rather than hidden (the core says which).
     val active = control.activeIf == null || edit.isActive(control.id)
@@ -231,7 +249,7 @@ private fun ControlRow(control: Control, edit: PointEdit, controller: PlaybackCo
                 Text(control.shortLabel, Modifier.weight(1f), style = label(active))
                 SwitchControl(control, edit, controller, generation)
             }
-            ControlKind.CHOICE -> ChoiceControl(control, edit, controller, active, generation)
+            ControlKind.CHOICE -> ChoiceControl(control, edit, controller, active, generation, tick, onChoice)
             ControlKind.SLIDER -> SliderControl(control, edit, controller, active, generation)
         }
     }
@@ -263,8 +281,10 @@ private fun ChoiceControl(
     controller: PlaybackController,
     active: Boolean,
     generation: Int,
+    tick: Int,
+    onChoice: () -> Unit,
 ) {
-    var index by remember(control.id, generation) { mutableIntStateOf(edit.value(control.id).roundToInt()) }
+    var index by remember(control.id, generation, tick) { mutableIntStateOf(edit.value(control.id).roundToInt()) }
     var open by remember(control.id) { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(control.shortLabel, Modifier.weight(1f), style = label(active))
@@ -280,6 +300,7 @@ private fun ChoiceControl(
                         edit.setValue(control.id, i.toDouble())
                         controller.settingsEdited()
                         open = false
+                        onChoice()
                     },
                 )
             }
@@ -311,6 +332,66 @@ private fun SliderControl(
             },
             steps = scale.steps,
             modifier = Modifier.testTag(control.id),
+        )
+    }
+}
+
+private val LAYER = Regex("""seq\.(\d+)""")
+
+/**
+ * A layer's pattern, in Strudel's mini-notation: a built-in rhythm the
+ * choice above picked, or one written here. The core checks it as it is
+ * typed; one that does not parse is shown with what is wrong (the core's
+ * words) and not taken.
+ */
+@Composable
+private fun PatternField(
+    layer: UInt,
+    edit: PointEdit,
+    controller: PlaybackController,
+    generation: Int,
+    tick: Int,
+    onTaken: () -> Unit,
+) {
+    var text by remember(layer, generation, tick) { mutableStateOf(edit.pattern(layer)) }
+    var error by remember(layer, generation, tick) { mutableStateOf<String?>(null) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            val rhythm = "seq.$layer.rhythm"
+            val before = edit.value(rhythm)
+            error = edit.setPattern(layer, it)
+            if (error == null) {
+                controller.settingsEdited()
+                // one of the built-in rhythms: the choice above shows it
+                if (edit.value(rhythm) != before) onTaken()
+            }
+        },
+        label = { Text(stringResource(R.string.layer_pattern)) },
+        placeholder = { Text(stringResource(R.string.layer_pattern_hint)) },
+        isError = error != null,
+        supportingText = error?.let { e -> { Text(e) } },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, bottom = 4.dp).testTag("seq.$layer.pattern"),
+    )
+}
+
+/** A layer's humanize, 0–1: each hit a little softer and later, never earlier. */
+@Composable
+private fun HumanizeSlider(layer: UInt, edit: PointEdit, controller: PlaybackController, generation: Int) {
+    var value by remember(layer, generation) { mutableStateOf(edit.humanize(layer).toFloat()) }
+    Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, bottom = 4.dp)) {
+        Text("${stringResource(R.string.layer_humanize)} · ${format(value.toDouble())}", style = label(true))
+        Slider(
+            value = value,
+            onValueChange = {
+                value = it
+                edit.setHumanize(layer, it.toDouble())
+                controller.settingsEdited()
+            },
+            modifier = Modifier.testTag("seq.$layer.humanize"),
         )
     }
 }

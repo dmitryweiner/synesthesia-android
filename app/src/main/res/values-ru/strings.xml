@@ -94,4 +94,7 @@
     <string name="msg_link_needs_web">Ссылка ведёт на точку, сохранённую в веб-приложении, — это приложение её не загрузит</string>
     <string name="msg_focus_denied">Звук занят другим приложением (звонок?)</string>
     <string name="msg_sound_stopped">Звук остановился: %1$s</string>
+    <string name="layer_pattern">Паттерн</string>
+    <string name="layer_pattern_hint">напр. 0 ~ [0 1] ~ , hh*8?</string>
+    <string name="layer_humanize">Живость</string>
 </resources>

@@ -723,6 +723,33 @@ the old code (two tokens) and passes now; the whole instrumented suite
 passed twice on the local API 35 emulator. Whether CI's API 35 is steady
 again takes a few runs to say.
 
+## Solved: two races between a stop and the next play (2026-10-16)
+
+After the core pins `0d51e23` and `999e0a9` the emulators failed again,
+on two races of our own that the timing shift brought out (neither core
+change touched the player):
+
+- **API 26**: `SearchTest` waited for frames with `playing=true
+  frame=null` — no run ever started. In the logcat the last run of
+  `PlaybackTest.theNotificationKeepsOneLiveSession…` was stopped 5 ms
+  after it was made and its track never logged `stop()`. `AudioOutput`
+  called `player.fadeIn()` on its own thread, so a `stop()` that came
+  first had its fade out undone: the player never fell silent, the run
+  never ended, and every later ▶ waited for it to let go. The fade in is
+  now done in `start()`, before the thread; `PlaybackTest.aRunStoppedAs…`
+  failed on its first run of ten before and passes now.
+- **API 35**: `timed out waiting for service in front`. A stopped
+  `PlaybackService` keeps collecting the state until `onDestroy`; a play
+  in that moment made it call `startForeground` again and set
+  `isInForeground`, so `play()` started no service — and `onDestroy` then
+  cleared the flag, leaving the sound playing with no service (and no ⏹
+  in the notification). An instance that has stopped itself no longer
+  goes back to the front; `stopAndPlayAtOnceKeepsPlaying` now asserts a
+  service is in front after ⏹▶, and failed before the fix.
+
+The whole instrumented suite passed twice on the local API 35 emulator;
+API 26 is CI's to confirm.
+
 ## Open questions (for the user)
 
 1. **The scout on a phone.** Full-quality renders (30 s at 22 kHz, as the

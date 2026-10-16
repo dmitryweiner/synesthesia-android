@@ -67,6 +67,28 @@ class PlaybackTest {
         }
     }
 
+    /**
+     * A stop that lands before the run's thread is under way: the run's fade
+     * in must not undo the stop's fade out, or the player is never silent,
+     * the run never ends and no later run may start — on the API 26 emulator
+     * every ▶ after such a stop waited for good.
+     */
+    @Test
+    fun aRunStoppedAsItStartsStillEnds() {
+        SoundPlayer(48_000u, requireNotNull(presetStateJson(0u))).use { player ->
+            repeat(10) { i ->
+                // Kept, not thrown: a run that never ends outlives the test
+                // and its player, and a throw there would take the process.
+                var error: Throwable? = null
+                val out = AudioOutput(player, 48_000) { error = it }
+                out.start()
+                out.stop()
+                assertTrue("run $i let go of the player", out.awaitFinished(3000))
+                assertEquals(null, error)
+            }
+        }
+    }
+
     @Test
     fun stopAndPlayAtOnceKeepsPlaying() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -87,6 +109,10 @@ class PlaybackTest {
             var t2 = 0.0
             instrumentation.runOnMainSync { t2 = playback.frameNow()?.time ?: -1.0 }
             assertTrue("frames advance after a restart: $t1 → $t2", t1 > 0 && t2 > t1)
+            // The stop let the service go; the play must bring one back, not
+            // be fooled by the one on its way out (API 35 emulator: the sound
+            // played on with no service and no ⏹ in the notification).
+            assertTrue("a service is in front after a restart", PlaybackService.isInForeground)
             instrumentation.runOnMainSync { playback.stop() }
             waitFor("service out of front") { !PlaybackService.isInForeground }
         }

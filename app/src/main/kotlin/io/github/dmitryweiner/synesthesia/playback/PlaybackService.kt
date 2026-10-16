@@ -59,6 +59,15 @@ class PlaybackService : Service() {
     private var inForeground = false
     private var lastStartId = 0
 
+    /**
+     * True once this instance has stopped itself and is on its way out. Its
+     * state collector runs until onDestroy, and a play() in that moment must
+     * not put it back in front: play() would take [isInForeground] for a
+     * running service and start none, and onDestroy would then clear the
+     * flag with the sound playing and no service — the API 35 emulator.
+     */
+    private var stopped = false
+
     override fun onCreate() {
         super.onCreate()
         playback = (application as SynesthesiaApp).playback
@@ -72,6 +81,7 @@ class PlaybackService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lastStartId = startId
+        stopped = false
         when (intent?.action) {
             ACTION_PLAY -> playback.play()
             ACTION_STOP -> playback.stop()
@@ -121,14 +131,14 @@ class PlaybackService : Service() {
                 .build(),
         )
         if (state.holdsForeground) {
-            goForeground(state)
+            if (!stopped) goForeground(state)
         } else if (inForeground) {
             stopForeground(STOP_FOREGROUND_DETACH)
             inForeground = false
             isInForeground = false
             getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(state))
             // Not stopSelf(): a play() that raced this stop has a newer start id.
-            stopSelf(lastStartId)
+            stopped = stopSelfResult(lastStartId)
         }
     }
 

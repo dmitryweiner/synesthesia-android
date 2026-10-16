@@ -89,6 +89,11 @@ class AudioOutput(
     }
 
     fun start() {
+        // Here, not on the thread: a stop() that comes before the thread is
+        // under way must find the fade in already done, or that fade in
+        // undoes the stop's fade out, the player is never silent and the
+        // run never ends (on the API 26 emulator, 5 ms between the two).
+        player.fadeIn()
         thread.start()
     }
 
@@ -145,7 +150,6 @@ class AudioOutput(
         val floats = FloatArray(CHUNK_FRAMES)
         val chunkNanos = CHUNK_FRAMES * 1_000_000_000.0 / sampleRate
         try {
-            player.fadeIn()
             track.play()
             while (true) {
                 val t0 = System.nanoTime()

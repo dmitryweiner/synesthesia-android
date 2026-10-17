@@ -184,7 +184,7 @@ fun StatsLine(stats: OutputStats?) {
         } else {
             stringResource(
                 R.string.output_stats,
-                stats.sampleRate, stats.bufferMs, 100 * stats.load, 100 * stats.loadPeak, stats.underruns,
+                stats.sampleRate, stats.channels, stats.bufferMs, 100 * stats.load, 100 * stats.loadPeak, stats.underruns,
             )
         },
         style = MaterialTheme.typography.bodySmall,

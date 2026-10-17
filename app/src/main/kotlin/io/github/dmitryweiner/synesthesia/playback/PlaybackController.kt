@@ -6,9 +6,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.session.MediaSession
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -213,6 +216,15 @@ class PlaybackController(
         }
     }
     private var noisyRegistered = false
+
+    /**
+     * Headphones on or off while the sound plays: the player is rebuilt in
+     * the other mode. (Off also stops the sound, by [noisy].)
+     */
+    private val route = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(added: Array<out AudioDeviceInfo>) = reroute()
+        override fun onAudioDevicesRemoved(removed: Array<out AudioDeviceInfo>) = reroute()
+    }
 
     /**
      * The recorded samples the points' layers play — the asset `bank.bin`
@@ -506,13 +518,34 @@ class PlaybackController(
 
     // --- the sound ---------------------------------------------------------
 
+    /**
+     * Stereo — the point's space and its binaural beat — when the sound goes
+     * to headphones; mono on the phone's speaker, where the two ears would
+     * only mix in the air (PLAN-BINAURAL.md decision 7).
+     */
+    private fun headphones(): Boolean =
+        audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in HEADPHONES }
+
+    /** A player in the mode the route asks for, with the bank once it is here. */
+    private fun newPlayer(stereo: Boolean): SoundPlayer {
+        val point = session.livePointJson()
+        val created = if (stereo) {
+            SoundPlayer.newStereo(sampleRate.toUInt(), point)
+        } else {
+            SoundPlayer(sampleRate.toUInt(), point)
+        }
+        bank?.let { b -> bankThread.execute { created.setBank(b) } }
+        return created
+    }
+
     @SuppressLint("WakelockTimeout") // held exactly while the sound plays, released in stopOutput()
     private fun startOutput() {
         val existing = player
-        if (existing == null) {
-            val created = SoundPlayer(sampleRate.toUInt(), session.livePointJson())
-            player = created
-            bank?.let { b -> bankThread.execute { created.setBank(b) } }
+        val channels = if (headphones()) 2u else 1u
+        if (existing == null || existing.channels() != channels) {
+            // An engine is built in one mode (the core never renders both);
+            // the old player is left to its run, which may still be fading out.
+            player = newPlayer(channels == 2u)
         } else {
             // The point may have moved while nothing was playing.
             existing.setPoint(session.livePointJson())
@@ -522,9 +555,23 @@ class PlaybackController(
         wakeLock.acquire()
         if (!noisyRegistered) {
             context.registerReceiver(noisy, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
+            audioManager.registerAudioDeviceCallback(route, main)
             noisyRegistered = true
         }
         applyEffects(session.setPlaying(now(), true))
+    }
+
+    /** The route changed while playing: the same point in the other mode, after a fade. */
+    private fun reroute() {
+        val p = player ?: return
+        val run = output ?: return
+        val channels = if (headphones()) 2u else 1u
+        if (p.channels() == channels) return
+        run.stop()
+        stopping = run
+        output = null
+        player = newPlayer(channels == 2u)
+        launchOutput()
     }
 
     /** Starts a run once the last one has let go of the player (a few hundred ms at most). */
@@ -561,6 +608,7 @@ class PlaybackController(
         if (wakeLock.isHeld) wakeLock.release()
         if (noisyRegistered) {
             context.unregisterReceiver(noisy)
+            audioManager.unregisterAudioDeviceCallback(route)
             noisyRegistered = false
         }
     }
@@ -599,6 +647,15 @@ class PlaybackController(
          * twice as often and no more.
          */
         const val TICK_MS = 25L
+
+        /** The outputs that are a pair of ears rather than a room. */
+        val HEADPHONES: Set<Int> = buildSet {
+            add(AudioDeviceInfo.TYPE_WIRED_HEADSET)
+            add(AudioDeviceInfo.TYPE_WIRED_HEADPHONES)
+            add(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP)
+            add(AudioDeviceInfo.TYPE_USB_HEADSET)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(AudioDeviceInfo.TYPE_BLE_HEADSET)
+        }
 
         /**
          * How often an edit reaches the sound — the core's `push_interval`,

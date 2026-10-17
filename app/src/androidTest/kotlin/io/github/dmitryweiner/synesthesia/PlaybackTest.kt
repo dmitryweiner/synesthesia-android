@@ -48,6 +48,26 @@ class PlaybackTest {
         }
     }
 
+    /** Headphones: a stereo player fills a stereo track, on the same clock. */
+    @Test
+    fun aStereoPlayerPlaysOnAStereoTrack() {
+        SoundPlayer.newStereo(48_000u, requireNotNull(presetStateJson(0u))).use { player ->
+            var error: Throwable? = null
+            val out = AudioOutput(player, 48_000) { error = it }
+            out.start()
+            Thread.sleep(1500)
+            val played = out.playedSeconds()
+            val stats = out.stats()
+            out.stop()
+            assertTrue("the run ended", out.awaitFinished(3000))
+            assertEquals(null, error)
+            assertEquals(2, stats.channels)
+            // Frames, not samples: two ears do not make the clock run twice as fast.
+            assertTrue("played $played s", played > 0.5 && played < 2.0)
+            assertTrue(player.time() >= played)
+        }
+    }
+
     @Test
     fun aStoppedRunLetsGoOfThePlayerSoTheNextCanStart() {
         SoundPlayer(48_000u, requireNotNull(presetStateJson(0u))).use { player ->

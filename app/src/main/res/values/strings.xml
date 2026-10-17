@@ -98,7 +98,7 @@
     <string name="meter_swell">swell</string>
     <string name="no_numbers">—</string>
     <string name="frame_stats">hits %1$d · peak %2$.3f · limiter %3$.1f dB · t %4$.1f s</string>
-    <string name="output_stats">%1$d Hz · buffer %2$d ms · core %3$.1f%% (peak %4$.0f%%) · underruns %5$d</string>
+    <string name="output_stats">%1$d Hz · %2$d ch · buffer %3$d ms · core %4$.1f%% (peak %5$.0f%%) · underruns %6$d</string>
 
     <!-- What the app has to tell the user. -->
     <string name="msg_keep_failed">Could not keep the point: %1$s</string>

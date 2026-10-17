@@ -61,6 +61,13 @@ class SettingsBindingsTest {
         assertTrue(section("a.tanpura").controls.any { it.shortLabel == "Jawari" })
         assertTrue(section("delayOn").controls.any { it.id == "fx.delayShimmer" })
         assertTrue(control("lfo.0.shape").options.contains("pink"))
+        // The binaural genes: a section of their own, and an azimuth in
+        // every voice's.
+        val bin = section("bin")
+        assertEquals("Binaural", bin.title)
+        assertEquals(listOf("bin.on", "bin.beat", "bin.width"), bin.controls.map { it.id })
+        assertEquals("bin.on", control("bin.beat").activeIf)
+        assertTrue(section("a.additive").controls.any { it.id == "a.additive.az" })
     }
 
     @Test

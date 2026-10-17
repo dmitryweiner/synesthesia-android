@@ -87,7 +87,7 @@
     <string name="meter_swell">גלים</string>
     <string name="no_numbers">—</string>
     <string name="frame_stats">פגיעות %1$d · שיא %2$.3f · מגביל %3$.1f dB · t %4$.1f s</string>
-    <string name="output_stats">%1$d Hz · מאגר %2$d ms · ליבה %3$.1f%% (שיא %4$.0f%%) · נפילות %5$d</string>
+    <string name="output_stats">%1$d Hz · %2$d ערוצים · מאגר %3$d ms · ליבה %4$.1f%% (שיא %5$.0f%%) · נפילות %6$d</string>
 
     <string name="msg_keep_failed">לא הצלחתי לשמור את הנקודה: %1$s</string>
     <string name="msg_not_a_token">זה לא אסימון של נקודה</string>

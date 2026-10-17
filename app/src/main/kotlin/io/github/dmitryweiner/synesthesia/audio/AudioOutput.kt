@@ -12,6 +12,8 @@ import java.nio.ByteOrder
 /** How the output is doing, for the screen and the bench (PLAN.md decision 12). */
 data class OutputStats(
     val sampleRate: Int,
+    /** 2 when the player renders the point's space and beat (headphones). */
+    val channels: Int,
     val bufferMs: Int,
     val chunkFrames: Int,
     /** Time spent in the core per second of audio, smoothed: 0.05 = 5% of one core. */
@@ -33,6 +35,10 @@ data class OutputStats(
  * The picture does not suffer for it: it asks for the frame at the *played*
  * time ([playedSeconds]), not the rendered one.
  *
+ * The track has the player's channels: a stereo player (headphones,
+ * PLAN-BINAURAL.md) fills a stereo track with its two ears, interleaved; a
+ * mono one a mono track.
+ *
  * Start fades in; [stop] fades out, lets the buffer play out and releases
  * the track on the audio thread itself, so neither end clicks and the
  * caller never waits.
@@ -53,6 +59,7 @@ class AudioOutput(
             .build()
     }
 
+    private val channels = player.channels().toInt()
     private val track: AudioTrack
     private val clock: PlayedClock
     private val bufferMs: Int
@@ -66,17 +73,16 @@ class AudioOutput(
     @Volatile private var lastUnderruns = 0
 
     init {
-        val minBytes = AudioTrack.getMinBufferSize(
-            sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT,
-        )
-        val wantBytes = sampleRate * BUFFER_MS / 1000 * Float.SIZE_BYTES
+        val mask = if (channels == 2) AudioFormat.CHANNEL_OUT_STEREO else AudioFormat.CHANNEL_OUT_MONO
+        val minBytes = AudioTrack.getMinBufferSize(sampleRate, mask, AudioFormat.ENCODING_PCM_FLOAT)
+        val wantBytes = sampleRate * BUFFER_MS / 1000 * channels * Float.SIZE_BYTES
         track = AudioTrack.Builder()
             .setAudioAttributes(attributes)
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
                     .setSampleRate(sampleRate)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .setChannelMask(mask)
                     .build(),
             )
             .setBufferSizeInBytes(maxOf(minBytes, wantBytes))
@@ -142,26 +148,31 @@ class AudioOutput(
                 // released meanwhile; keep the last count
             }
         }
-        return OutputStats(sampleRate, bufferMs, CHUNK_FRAMES, load, loadPeak, lastUnderruns)
+        return OutputStats(sampleRate, channels, bufferMs, CHUNK_FRAMES, load, loadPeak, lastUnderruns)
     }
 
     private fun run() {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
-        val floats = FloatArray(CHUNK_FRAMES)
+        val samples = CHUNK_FRAMES * channels
+        val floats = FloatArray(samples)
         val chunkNanos = CHUNK_FRAMES * 1_000_000_000.0 / sampleRate
         try {
             track.play()
             while (true) {
                 val t0 = System.nanoTime()
-                val bytes = player.render(CHUNK_FRAMES.toUInt())
+                val bytes = if (channels == 2) {
+                    player.renderStereo(CHUNK_FRAMES.toUInt())
+                } else {
+                    player.render(CHUNK_FRAMES.toUInt())
+                }
                 val chunkLoad = (System.nanoTime() - t0) / chunkNanos
                 load = if (load == 0.0) chunkLoad else load * 0.98 + chunkLoad * 0.02
                 if (chunkLoad > loadPeak) loadPeak = chunkLoad
 
                 ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(floats)
                 var offset = 0
-                while (offset < CHUNK_FRAMES) {
-                    val n = track.write(floats, offset, CHUNK_FRAMES - offset, AudioTrack.WRITE_BLOCKING)
+                while (offset < samples) {
+                    val n = track.write(floats, offset, samples - offset, AudioTrack.WRITE_BLOCKING)
                     check(n >= 0) { "AudioTrack.write returned $n" }
                     offset += n
                 }

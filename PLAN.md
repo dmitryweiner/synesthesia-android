@@ -29,7 +29,7 @@ the same rule as the sibling projects. The app's own UI strings are English in
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`4a6f890`); this repository, `main` (phases 0 and 1 merged on
+`a48d98f`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
 
 ## Keeping up with the web app
@@ -696,6 +696,7 @@ copied into this repository.
 | picture, chosen rung | ≥ 30 fps on a 2020 mid-range phone |
 | scout, 3 + 3 candidates | < 4 s wall, measured energy per press noted |
 | cold start → first sound | < 500 ms after ▶ |
+| stereo (headphones), heaviest preset | ≤ 1.6× its mono `core %` (the core's M1 bench: 1.16–1.38×); not measured on a phone yet |
 
 ## Solved: the sound stopped by itself on API 35 (2026-10-15)
 
@@ -749,6 +750,43 @@ change touched the player):
 
 The whole instrumented suite passed twice on the local API 35 emulator;
 API 26 is CI's to confirm.
+
+## Binaural: stereo on headphones (2026-10-17)
+
+The core's stereo engine (synesthesia-core PLAN-BINAURAL.md, B0–B4; pinned
+at `a48d98f`, 313 genes) is in the app. What it took here, and nothing
+more — the genes, the sections and the sound are the core's:
+
+- **The mode follows the route** (PLAN-BINAURAL decision 7: headphones
+  are the host's business). `PlaybackController.headphones()` asks
+  `AudioManager.getDevices(OUTPUTS)` for a wired headset or headphones,
+  Bluetooth A2DP, a USB or (API 31+) BLE headset; then the player is
+  `SoundPlayer.newStereo`, otherwise the mono `SoundPlayer` as before —
+  on the speaker the two ears would only mix in the air, and a beat would
+  turn into a tremolo. No setting: the user changes the mode by putting
+  headphones on.
+- **A change of route while playing rebuilds the player** (an engine is
+  built in one mode): an `AudioDeviceCallback`, registered with `noisy`,
+  fades the run out and starts a new one on a new player in the other
+  mode, the same point. Unplugging also stops the sound, as before
+  (`ACTION_AUDIO_BECOMING_NOISY`).
+- **`AudioOutput` takes the player's channels**: a stereo track, buffer
+  sized per frame × 2, `renderStereo` interleaved L R. The played clock
+  counts frames, so it is unchanged. The stats line shows the channels.
+- **Settings**: the Binaural section (`bin.on`, `bin.beat`, `bin.width`)
+  and an azimuth in every voice's section came with the schema, nothing
+  written for them (`SettingsBindingsTest` checks they are there).
+
+Tests: `CoreBindingsTest.aStereoPlayerGivesTwoEarsAndAMonoOneTheSameInBoth`
+(JVM), `PlaybackTest.aStereoPlayerPlaysOnAStereoTrack` (device); the whole
+instrumented suite passed on the local API 35 emulator.
+
+**Still owed, on a phone** (by hand, with headphones): the first
+measurement of the stereo engine — `core %` on the stats line for the
+heaviest presets (*Fractal garden*, *Night meadow*, *Tanpura halo*) in
+stereo against mono, written into the budget below with the date; and
+plugging headphones in and out while it plays (the mode switches, no
+click beyond the fade, no second sound).
 
 ## Open questions (for the user)
 

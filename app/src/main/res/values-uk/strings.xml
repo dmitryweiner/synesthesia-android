@@ -83,7 +83,7 @@
     <string name="meter_swell">хвиля</string>
     <string name="no_numbers">—</string>
     <string name="frame_stats">удари %1$d · пік %2$.3f · лімітер %3$.1f dB · t %4$.1f с</string>
-    <string name="output_stats">%1$d Гц · буфер %2$d мс · ядро %3$.1f%% (пік %4$.0f%%) · провали %5$d</string>
+    <string name="output_stats">%1$d Гц · %2$d кан. · буфер %3$d мс · ядро %4$.1f%% (пік %5$.0f%%) · провали %6$d</string>
 
     <string name="msg_keep_failed">Не вдалося зберегти точку: %1$s</string>
     <string name="msg_not_a_token">Це не токен точки</string>

@@ -4,6 +4,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * The generated Kotlin against the real core, built for this machine: what
@@ -43,6 +45,31 @@ class CoreBindingsTest {
         }
         assertTrue("and the delay's shimmer", schema.contains("delayShimmer"))
         assertTrue("and the pink LFO", schema.contains("\"pink\""))
+    }
+
+    @Test
+    fun aStereoPlayerGivesTwoEarsAndAMonoOneTheSameInBoth() {
+        val point = requireNotNull(presetStateJson(0u))
+            .replaceFirst("{", "{\"bin\":{\"on\":true,\"beat\":6,\"width\":0.8},")
+        val frames = 4800
+        fun ears(player: SoundPlayer): FloatArray {
+            player.fadeIn()
+            var bytes = ByteArray(0)
+            repeat(5) { bytes = player.renderStereo(frames.toUInt()) }
+            val out = FloatArray(2 * frames)
+            ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(out)
+            return out
+        }
+        SoundPlayer.newStereo(48_000u, point).use { stereo ->
+            assertEquals(2u, stereo.channels())
+            val s = ears(stereo)
+            assertTrue("the ears differ", (0 until frames).any { s[2 * it] != s[2 * it + 1] })
+        }
+        SoundPlayer(48_000u, point).use { mono ->
+            assertEquals(1u, mono.channels())
+            val s = ears(mono)
+            assertTrue("one sound in both ears", (0 until frames).all { s[2 * it] == s[2 * it + 1] })
+        }
     }
 
     @Test

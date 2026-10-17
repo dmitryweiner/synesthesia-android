@@ -29,7 +29,7 @@ the same rule as the sibling projects. The app's own UI strings are English in
 | 7 | iOS readiness (optional) | — |
 
 Where the code is: synesthesia-core `main` (the app pins it at
-`a48d98f`); this repository, `main` (phases 0 and 1 merged on
+`0319aa1`); this repository, `main` (phases 0 and 1 merged on
 2026-10-03). Update this table when a phase lands.
 
 ## Keeping up with the web app
